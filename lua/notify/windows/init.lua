@@ -48,6 +48,7 @@ function WindowAnimator:push_pending(queue)
     local windows = vim.tbl_keys(self.win_stages)
     local win_opts = self.stages[1]({
       message = self:_get_dimensions(notif_buf),
+      anchor = self:_get_anchor(notif_buf),
       open_windows = windows,
     })
     if not win_opts then
@@ -139,7 +140,7 @@ function WindowAnimator:update_states(time, goals)
   for win, win_goals in pairs(goals) do
     if win_goals.time and not self.timers[win] then
       local buf_time = self.notif_bufs[win]:timeout() == nil and self.config.default_timeout()
-        or self.notif_bufs[win]:timeout()
+          or self.notif_bufs[win]:timeout()
       if buf_time ~= false then
         if buf_time == true then
           buf_time = nil
@@ -219,6 +220,7 @@ function WindowAnimator:get_goals()
     local win_goals = self.stages[win_stage]({
       buffer = notif_buf:buffer(),
       message = self:_get_dimensions(notif_buf),
+      anchor = self:_get_anchor(notif_buf),
       open_windows = open_windows,
     }, win)
     if not win_goals then
@@ -228,6 +230,10 @@ function WindowAnimator:get_goals()
     end
   end
   return goals
+end
+
+function WindowAnimator:_get_anchor(notif_buf)
+  return notif_buf._notif.anchor or self.config.anchor()
 end
 
 function WindowAnimator:_get_dimensions(notif_buf)
@@ -254,7 +260,7 @@ function WindowAnimator:apply_updates()
           return
         end
         local new_value = round_field and max(round(states[field].position), 1)
-          or states[field].position
+            or states[field].position
         if new_value == conf[field] then
           return
         end

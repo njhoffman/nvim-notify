@@ -17,6 +17,16 @@ local BUILTIN_STAGES = {
   STATIC = "static",
 }
 
+local ANCHORS = {
+  TOP_RIGHT = "TR",
+  TOP_CENTER = "TC",
+  TOP_LEFT = "TL",
+  CENTER = "C",
+  BOTTOM_LEFT = "BL",
+  BOTTOM_CENTER = "BC",
+  BOTTOM_RIGHT = "BR"
+}
+
 local default_config = {
   level = vim.log.levels.INFO,
   timeout = 5000,
@@ -24,6 +34,7 @@ local default_config = {
   max_height = nil,
   stages = BUILTIN_STAGES.FADE_IN_SLIDE_OUT,
   render = BUILTIN_RENDERERS.DEFAULT,
+  anchor = ANCHORS.TOP_RIGHT,
   background_colour = "Normal",
   on_open = nil,
   on_close = nil,
@@ -129,6 +140,10 @@ function Config.setup(custom_config)
     return user_config.icons
   end
 
+  function config.anchor()
+    return user_config.anchor
+  end
+
   function config.stages()
     return user_config.stages
   end
@@ -155,12 +170,12 @@ function Config.setup(custom_config)
 
   function config.max_width()
     return util.is_callable(user_config.max_width) and user_config.max_width()
-      or user_config.max_width
+        or user_config.max_width
   end
 
   function config.max_height()
     return util.is_callable(user_config.max_height) and user_config.max_height()
-      or user_config.max_height
+        or user_config.max_height
   end
 
   local stages = config.stages()

@@ -12,6 +12,7 @@
 ---@field on_open fun(win: number) | nil
 ---@field on_close fun(win: number) | nil
 ---@field render fun(buf: integer, notification: Notification, highlights: table<string, string>)
+---@field anchor string[]
 local Notification = {}
 
 function Notification:new(id, message, level, opts, config)
@@ -40,6 +41,7 @@ function Notification:new(id, message, level, opts, config)
     on_close = opts.on_close,
     render = opts.render,
     hide_from_history = opts.hide_from_history,
+    anchor = opts.anchor or config.anchor(),
   }
   self.__index = self
   setmetatable(notif, self)
