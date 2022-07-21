@@ -41,6 +41,7 @@ end
 ---@class notify.Options @Options for an individual notification
 ---@field title string
 ---@field icon string
+---@field anchor string
 ---@field timeout number | boolean: Time to show notification in milliseconds, set to false to disable timeout.
 ---@field on_open function: Callback for when window opens, receives window as argument.
 ---@field on_close function: Callback for when window closes, receives window as argument.
@@ -61,6 +62,7 @@ end
 ---@field icon string: Icon used for notification
 ---@field time number: Time of message, as returned by `vim.fn.localtime()`
 ---@field render function: Function to render notification buffer
+---@field anchor string[]: Positional anchor of message (TL,TC,TR,C,BL,BC,BR)
 
 ---@class notify.AsyncRecord : notify.Record
 ---@field events NotificationEvents
@@ -191,6 +193,7 @@ function notify.instance(user_config, inherit)
         "on_close",
         "render",
         "hide_from_history",
+        "anchor",
       }
       message = message or existing.message
       level = level or existing.level
