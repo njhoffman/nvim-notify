@@ -60,6 +60,8 @@ function WindowAnimator:push_pending(queue)
     end
     win_opts.noautocmd = true
     local win = util.open_win(notif_buf, false, win_opts)
+    vim.fn.setwinvar(win, "&winhl",
+      "Normal:" .. notif_buf.highlights.body .. ",FloatBorder:" .. notif_buf.highlights.border)
     self.win_stages[win] = 2
     self.win_states[win] = {}
     self.notif_bufs[win] = notif_buf
@@ -139,8 +141,8 @@ end
 function WindowAnimator:update_states(time, goals)
   for win, win_goals in pairs(goals) do
     if win_goals.time and not self.timers[win] then
-      local buf_time = self.notif_bufs[win]:timeout() == nil and self.config.default_timeout()
-          or self.notif_bufs[win]:timeout()
+      local buf_time = self.notif_bufs[win]:timeout() == nil and self.config.default_timeout() or
+          self.notif_bufs[win]:timeout()
       if buf_time ~= false then
         if buf_time == true then
           buf_time = nil
@@ -248,19 +250,22 @@ function WindowAnimator:apply_updates()
   for win, states in pairs(self.win_states) do
     updated = true
     if states.opacity then
-      self.notif_bufs[win].highlights:set_opacity(states.opacity.position)
+      local notif_buf = self.notif_bufs[win]
+      notif_buf.highlights:set_opacity(states.opacity.position)
+
+      vim.fn.setwinvar(win, "&winhl",
+        "Normal:" .. notif_buf.highlights.body .. ",FloatBorder:" .. notif_buf.highlights.border)
     end
     local exists, conf = util.get_win_config(win)
     if not exists then
       self:remove_win(win)
     else
       local win_updated = false
-      local function set_field(field, round_field)
+      local function set_field(field, min, round_to)
         if not states[field] then
           return
         end
-        local new_value = round_field and max(round(states[field].position), 1)
-            or states[field].position
+        local new_value = max(round(states[field].position, round_to), min)
         if new_value == conf[field] then
           return
         end
@@ -268,10 +273,10 @@ function WindowAnimator:apply_updates()
         conf[field] = new_value
       end
 
-      set_field("row", false)
-      set_field("col", false)
-      set_field("width", true)
-      set_field("height", true)
+      set_field("row", 0, 1)
+      set_field("col", 0, 1)
+      set_field("width", 1)
+      set_field("height", 1)
 
       if win_updated then
         api.nvim_win_set_config(win, conf)
