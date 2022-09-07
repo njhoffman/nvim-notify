@@ -33,8 +33,7 @@ function M.blend(fg_hex, bg_hex, alpha)
   local segment = 0xFF0000
   local result = 0
   for i = 2, 0, -1 do
-    local blended = alpha * rshift(band(fg_hex, segment), i * 8)
-      + (1 - alpha) * rshift(band(bg_hex, segment), i * 8)
+    local blended = alpha * rshift(band(fg_hex, segment), i * 8) + (1 - alpha) * rshift(band(bg_hex, segment), i * 8)
 
     result = bor(lshift(result, 8), floor((min(max(blended, 0), 255)) + 0.5))
     segment = rshift(segment, 8)
@@ -75,16 +74,18 @@ function M.get_win_config(win)
 end
 
 function M.open_win(notif_buf, enter, opts)
+  if opts.relative and not (opts.row > 0 and opts.col > 0 or opts.bufnr ~= nil) then
+    print("Creating a relative window without row/col or bufnr")
+    print(vim.inspect(opts))
+    return false
+  end
   local win = vim.api.nvim_open_win(notif_buf:buffer(), enter, opts)
   -- vim.wo does not behave like setlocal, thus we use setwinvar to set local
   -- only options. Otherwise our changes would affect subsequently opened
   -- windows.
   -- see e.g. neovim#14595
-  vim.fn.setwinvar(
-    win,
-    "&winhl",
-    "Normal:" .. notif_buf.highlights.body .. ",FloatBorder:" .. notif_buf.highlights.border
-  )
+  vim.fn.setwinvar(win, "&winhl",
+    "Normal:" .. notif_buf.highlights.body .. ",FloatBorder:" .. notif_buf.highlights.border)
   vim.fn.setwinvar(win, "&wrap", 0)
   return win
 end
