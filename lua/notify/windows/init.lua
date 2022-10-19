@@ -65,8 +65,8 @@ function WindowAnimator:push_pending(queue)
     self.win_stages[win] = 2
     self.win_states[win] = {}
     self.notif_bufs[win] = notif_buf
-    notif_buf:open(win)
     queue:pop()
+    notif_buf:open(win)
   end
 end
 
@@ -77,10 +77,12 @@ function WindowAnimator:advance_stages(goals)
     local win_state = self.win_states[win]
     for field, goal in pairs(win_goals) do
       if field ~= "time" then
-        if goal.complete then
-          complete = goal.complete(win_state[field].position)
-        else
-          complete = goal[1] == round(win_state[field].position, 2)
+        if type(goal) == "table" then
+          if goal.complete then
+            complete = goal.complete(win_state[field].position)
+          else
+            complete = goal[1] == round(win_state[field].position, 2)
+          end
         end
         if not complete then
           break
@@ -257,6 +259,7 @@ function WindowAnimator:apply_updates()
         "Normal:" .. notif_buf.highlights.body .. ",FloatBorder:" .. notif_buf.highlights.border)
     end
     local exists, conf = util.get_win_config(win)
+    local new_conf = {}
     if not exists then
       self:remove_win(win)
     else
@@ -270,7 +273,7 @@ function WindowAnimator:apply_updates()
           return
         end
         win_updated = true
-        conf[field] = new_value
+        new_conf[field] = new_value
       end
 
       set_field("row", 0, 1)
@@ -279,7 +282,12 @@ function WindowAnimator:apply_updates()
       set_field("height", 1)
 
       if win_updated then
-        api.nvim_win_set_config(win, conf)
+        if new_conf.row or new_conf.col then
+          new_conf.relative = conf.relative
+          new_conf.row = new_conf.row or conf.row
+          new_conf.col = new_conf.col or conf.col
+        end
+        api.nvim_win_set_config(win, new_conf)
       end
     end
   end
