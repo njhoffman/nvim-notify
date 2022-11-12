@@ -9,6 +9,7 @@ local stages = require("notify.stages")
 local Notification = require("notify.service.notification")
 local WindowAnimator = require("notify.windows")
 local NotificationService = require("notify.service")
+local NotificationBuf = require("notify.service.buffer")
 local stage_util = require("notify.stages.util")
 
 ---@type Notification[]
@@ -50,6 +51,7 @@ end
 ---@field replace integer | notify.Record: Notification record or the record `id` field. Replace an existing notification if still open. All arguments not given are inherited from the replaced notification including message and level.
 ---@field hide_from_history boolean: Hide this notification from the history
 ---@field anchor string[]: Positional anchor of message (TL,TC,TR,C,BL,BC,BR)
+---@field animate boolean: If false, the window will jump to the timed stage. Intended for use in blocking events (e.g. vim.fn.input)
 
 ---@class NotificationEvents @Async events for a notification
 ---@field open function: Resolves when notification is opened
@@ -125,6 +127,25 @@ function notify.dismiss(opts)
     notify.setup()
   end
   return global_instance.dismiss(opts)
+end
+
+---@class notify.OpenedBuffer
+---@field buffer integer: Created buffer number
+---@field height integer: Height of the buffer content including extmarks
+---@field width integer: width of the buffer content including extmarks
+---@field highlights table<string, string>: Highlights used for the buffer contents
+
+---Open a notification in a new buffer
+---@param notif_id integer | notify.Record
+---@param opts table
+---@field buffer integer: Use this buffer, instead of creating a new one
+---@field max_width integer: Render message to this width (used to limit window decoration sizes)
+---@return notify.OpenedBuffer
+function notify.open(notif_id, opts)
+  if not global_instance then
+    notify.setup()
+  end
+  return global_instance.open(notif_id, opts)
 end
 
 ---Number of notifications currently waiting to be displayed
@@ -205,6 +226,7 @@ function notify.instance(user_config, inherit)
         "render",
         "hide_from_history",
         "anchor",
+        "animate",
       }
       message = message or existing.message
       level = level or existing.level
@@ -224,6 +246,34 @@ function notify.instance(user_config, inherit)
     end
     return {
       id = id,
+    }
+  end
+
+  ---@param notif_id integer | notify.Record
+  ---@param opts table
+  function instance.open(notif_id, opts)
+    opts = opts or {}
+    if type(notif_id) == "table" then
+      notif_id = notif_id.id
+    end
+    local notif = notifications[notif_id]
+    if not notif then
+      vim.notify("Invalid notification id: " .. notif_id, vim.log.levels.WARN, { title = "nvim-notify" })
+      return
+    end
+    local buf = opts.buffer or vim.api.nvim_create_buf(false, true)
+    local notif_buf = NotificationBuf(buf, notif, vim.tbl_extend("keep", opts, { config = instance_config }))
+    notif_buf:render()
+    return {
+      buffer = buf,
+      height = notif_buf:height(),
+      width = notif_buf:width(),
+      highlights = {
+        body = notif_buf.highlights.body,
+        border = notif_buf.highlights.border,
+        title = notif_buf.highlights.title,
+        icon = notif_buf.highlights.icon,
+      },
     }
   end
 
