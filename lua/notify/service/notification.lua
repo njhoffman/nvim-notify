@@ -16,9 +16,12 @@
 ---@field anchor string[]
 local Notification = {}
 
+local level_maps = vim.tbl_extend("keep", {}, vim.log.levels)
+vim.tbl_add_reverse_lookup(level_maps)
+
 function Notification:new(id, message, level, opts, config)
   if type(level) == "number" then
-    level = vim.lsp.log_levels[level]
+    level = level_maps[level]
   end
   if type(message) == "string" then
     message = vim.split(message, "\n")
