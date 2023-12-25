@@ -9,8 +9,8 @@ return function(bufnr, notif, highlights, config)
   local right_title = notif.title[2]
   local left_title = notif.title[1]
   local title_accum = vim.str_utfindex(left_icon)
-      + vim.str_utfindex(right_title)
-      + vim.str_utfindex(left_title)
+    + vim.str_utfindex(right_title)
+    + vim.str_utfindex(left_title)
 
   local left_buffer = string.rep(" ", math.max(0, max_message_width - title_accum))
 

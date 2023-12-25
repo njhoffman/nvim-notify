@@ -1,57 +1,38 @@
 local stages_util = require("notify.stages.util")
 
-local opacity = 100
-local width = 0
-
-local get_col = function(state)
-  local anchor = state.anchor or "TR"
-  local col = vim.opt.columns:get()
-  if anchor == "TC" or anchor == "BC" or anchor == "C" then
-    col = vim.opt.columns:get() / 2 + width / 2
-  elseif anchor == "TL" or anchor == "BL" then
-    col = 1
-  end
-  return col
-end
-
-local get_row = function(state, next_height, direction)
-  local next_row = stages_util.available_slot(state.open_windows, next_height, direction)
-  if not next_row then
-    return nil
-  end
-  return next_row
-end
-
 return function(direction)
   return {
     function(state)
-      width = state.message.width
       local next_height = state.message.height + 2
+      local next_row = stages_util.available_slot(state.open_windows, next_height, direction)
+      if not next_row then
+        return nil
+      end
       return {
         relative = "editor",
         anchor = "NE",
         width = state.message.width,
         height = state.message.height,
-        col = get_col(state),
-        row = get_row(state, next_height, direction),
+        col = vim.opt.columns:get(),
+        row = next_row,
         border = "rounded",
         style = "minimal",
         opacity = 0,
       }
     end,
-    function(state)
+    function()
       return {
-        opacity = { opacity },
-        col = { get_col(state) },
+        opacity = { 100 },
+        col = { vim.opt.columns:get() },
       }
     end,
-    function(state)
+    function()
       return {
-        col = { get_col(state) },
+        col = { vim.opt.columns:get() },
         time = true,
       }
     end,
-    function(state)
+    function()
       return {
         opacity = {
           0,
@@ -60,7 +41,7 @@ return function(direction)
             return cur_opacity <= 4
           end,
         },
-        col = { get_col(state) },
+        col = { vim.opt.columns:get() },
       }
     end,
   }

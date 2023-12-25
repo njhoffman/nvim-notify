@@ -5,7 +5,7 @@ local NotifyBufHighlights = require("notify.service.buffer.highlights")
 ---@class NotificationBuf
 ---@field highlights NotifyBufHighlights
 ---@field _config table
----@field _notif Notification
+---@field _notif notify.Notification
 ---@field _state "open" | "closed"
 ---@field _buffer number
 ---@field _height number
@@ -51,11 +51,12 @@ function NotificationBuf:open(win)
     return
   end
   self._state = BufState.OPEN
+  local record = self._notif:record()
   if self._notif.on_open then
-    self._notif.on_open(win)
+    self._notif.on_open(win, record)
   end
   if self._config.on_open() then
-    self._config.on_open()(win)
+    self._config.on_open()(win, record)
   end
 end
 
@@ -140,12 +141,16 @@ function NotificationBuf:buffer()
   return self._buffer
 end
 
+function NotificationBuf:is_valid()
+  return self._buffer and vim.api.nvim_buf_is_valid(self._buffer)
+end
+
 function NotificationBuf:level()
   return self._notif.level
 end
 
 ---@param buf number
----@param notification Notification
+---@param notification notify.Notification;q
 ---@return NotificationBuf
 return function(buf, notification, opts)
   return NotificationBuf:new(

@@ -46,28 +46,34 @@ function WindowAnimator:push_pending(queue)
   while not queue:is_empty() do
     ---@type NotificationBuf
     local notif_buf = queue:peek()
-    local windows = vim.tbl_keys(self.win_stages)
-    local win_opts = self.stages[1]({
-      message = self:_get_dimensions(notif_buf),
-      anchor = self:_get_anchor(notif_buf),
-      open_windows = windows,
-    })
-    if not win_opts then
-      return
+    if not notif_buf:is_valid() then
+      queue:pop()
+    else
+      local windows = vim.tbl_keys(self.win_stages)
+      local win_opts = self.stages[1]({
+        message = self:_get_dimensions(notif_buf),
+        open_windows = windows,
+      })
+      if not win_opts then
+        return
+      end
+      local opacity = util.pop(win_opts, "opacity")
+      if opacity then
+        notif_buf.highlights:set_opacity(opacity)
+      end
+      win_opts.noautocmd = true
+      local win = util.open_win(notif_buf, false, win_opts)
+      vim.fn.setwinvar(
+        win,
+        "&winhl",
+        "Normal:" .. notif_buf.highlights.body .. ",FloatBorder:" .. notif_buf.highlights.border
+      )
+      self.win_stages[win] = 2
+      self.win_states[win] = {}
+      self.notif_bufs[win] = notif_buf
+      queue:pop()
+      notif_buf:open(win)
     end
-    local opacity = util.pop(win_opts, "opacity")
-    if opacity then
-      notif_buf.highlights:set_opacity(opacity)
-    end
-    win_opts.noautocmd = true
-    local win = util.open_win(notif_buf, false, win_opts)
-    vim.fn.setwinvar(win, "&winhl",
-      "Normal:" .. notif_buf.highlights.body .. ",FloatBorder:" .. notif_buf.highlights.border)
-    self.win_stages[win] = 2
-    self.win_states[win] = {}
-    self.notif_bufs[win] = notif_buf
-    queue:pop()
-    notif_buf:open(win)
   end
 end
 
@@ -116,38 +122,9 @@ function WindowAnimator:on_refresh(win)
   end
 end
 
-function WindowAnimator:update_states(time, goals)
-  for win, win_goals in pairs(goals) do
-    if win_goals.time and not self.timers[win] then
-      local buf_time = self.notif_bufs[win]:timeout() == nil and self.config.default_timeout() or
-          self.notif_bufs[win]:timeout()
-      if buf_time ~= false then
-        if buf_time == true then
-          buf_time = nil
-        end
-        local timer = vim.loop.new_timer()
-        self.timers[win] = timer
-        timer:start(
-          buf_time,
-          buf_time,
-          vim.schedule_wrap(function()
-            timer:stop()
-            self.timers[win] = nil
-            local notif_buf = self.notif_bufs[win]
-            if notif_buf and notif_buf:should_stay() then
-              return
-            end
-            self:advance_stage(win)
-          end)
-        )
-      end
-    end
-  end
-end
-
 function WindowAnimator:_start_timer(win)
-  local buf_time = self.notif_bufs[win]:timeout() == nil and self.config.default_timeout() or
-      self.notif_bufs[win]:timeout()
+  local buf_time = self.notif_bufs[win]:timeout() == nil and self.config.default_timeout()
+    or self.notif_bufs[win]:timeout()
   if buf_time ~= false then
     if buf_time == true then
       buf_time = nil
@@ -181,7 +158,11 @@ function WindowAnimator:_update_window(time, win, open_windows)
 
   -- If we don't animate, then we move to all goals instantly.
   -- Can't just jump to the end, because we need to the intermediate changes
-  while not notif_buf:should_animate() and win_goals.time == nil and self.win_stages[win] < #self.stages do
+  while
+    not notif_buf:should_animate()
+    and win_goals.time == nil
+    and self.win_stages[win] < #self.stages
+  do
     for field, goal in pairs(win_goals) do
       if type(goal) == "table" then
         win_goals[field] = goal[1]
@@ -274,26 +255,6 @@ function WindowAnimator:_advance_win_state(win, goals, time)
   return self:_apply_win_state(win, win_state)
 end
 
-function WindowAnimator:get_goals()
-  local goals = {}
-  local open_windows = vim.tbl_keys(self.win_stages)
-  for win, win_stage in pairs(self.win_stages) do
-    local notif_buf = self.notif_bufs[win]
-    local win_goals = self.stages[win_stage]({
-      buffer = notif_buf:buffer(),
-      message = self:_get_dimensions(notif_buf),
-      anchor = self:_get_anchor(notif_buf),
-      open_windows = open_windows,
-    }, win)
-    if not win_goals then
-      self:remove_win(win)
-    else
-      goals[win] = win_goals
-    end
-  end
-  return goals
-end
-
 function WindowAnimator:_get_win_goals(win, win_stage, open_windows)
   local notif_buf = self.notif_bufs[win]
   local win_goals = self.stages[win_stage]({
@@ -302,10 +263,6 @@ function WindowAnimator:_get_win_goals(win, win_stage, open_windows)
     open_windows = open_windows,
   }, win)
   return win_goals
-end
-
-function WindowAnimator:_get_anchor(notif_buf)
-  return notif_buf._notif.anchor or self.config.anchor()
 end
 
 function WindowAnimator:_get_dimensions(notif_buf)
@@ -320,9 +277,14 @@ function WindowAnimator:_apply_win_state(win, win_state)
   if win_state.opacity then
     win_updated = true
     local notif_buf = self.notif_bufs[win]
-    notif_buf.highlights:set_opacity(win_state.opacity.position)
-    vim.fn.setwinvar(win, "&winhl",
-      "Normal:" .. notif_buf.highlights.body .. ",FloatBorder:" .. notif_buf.highlights.border)
+    if notif_buf:is_valid() then
+      notif_buf.highlights:set_opacity(win_state.opacity.position)
+      vim.fn.setwinvar(
+        win,
+        "&winhl",
+        "Normal:" .. notif_buf.highlights.body .. ",FloatBorder:" .. notif_buf.highlights.border
+      )
+    end
   end
   local exists, conf = util.get_win_config(win)
   local new_conf = {}

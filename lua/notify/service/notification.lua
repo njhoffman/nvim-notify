@@ -1,4 +1,4 @@
----@class Notification
+---@class notify.Notification
 ---@field id integer
 ---@field level string
 ---@field message string[]
@@ -10,10 +10,9 @@
 ---@field animate boolean
 ---@field hide_from_history boolean
 ---@field keep fun(): boolean
----@field on_open fun(win: number) | nil
----@field on_close fun(win: number) | nil
----@field render fun(buf: integer, notification: Notification, highlights: table<string, string>)
----@field anchor string[]
+---@field on_open fun(win: number, record: notify.Record) | nil
+---@field on_close fun(win: number, record: notify.Record) | nil
+---@field render fun(buf: integer, notification: notify.Notification, highlights: table<string, string>)
 local Notification = {}
 
 local level_maps = vim.tbl_extend("keep", {}, vim.log.levels)
@@ -30,7 +29,7 @@ function Notification:new(id, message, level, opts, config)
   local time = vim.fn.localtime()
   local title = opts.title or ""
   if type(title) == "string" then
-    title = { title, vim.fn.strftime("%H:%M", time) }
+    title = { title, vim.fn.strftime(config.time_formats().notification, time) }
   end
   vim.validate({
     message = { message, "table" },
@@ -51,7 +50,6 @@ function Notification:new(id, message, level, opts, config)
     animate = opts.animate ~= false,
     render = opts.render,
     hide_from_history = opts.hide_from_history,
-    anchor = opts.anchor or config.anchor(),
   }
   self.__index = self
   setmetatable(notif, self)

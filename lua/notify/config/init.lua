@@ -17,16 +17,6 @@ local BUILTIN_STAGES = {
   STATIC = "static",
 }
 
-local ANCHORS = {
-  TOP_RIGHT = "TR",
-  TOP_CENTER = "TC",
-  TOP_LEFT = "TL",
-  CENTER = "C",
-  BOTTOM_LEFT = "BL",
-  BOTTOM_CENTER = "BC",
-  BOTTOM_RIGHT = "BR",
-}
-
 local default_config = {
   level = vim.log.levels.INFO,
   timeout = 5000,
@@ -34,13 +24,16 @@ local default_config = {
   max_height = nil,
   stages = BUILTIN_STAGES.FADE_IN_SLIDE_OUT,
   render = BUILTIN_RENDERERS.DEFAULT,
-  anchor = ANCHORS.TOP_RIGHT,
-  background_colour = "Normal",
+  background_colour = "NotifyBackground",
   on_open = nil,
   on_close = nil,
   minimum_width = 50,
   fps = 30,
   top_down = true,
+  time_formats = {
+    notification_history = "%FT%T",
+    notification = "%T",
+  },
   icons = {
     ERROR = "",
     WARN = "",
@@ -51,19 +44,20 @@ local default_config = {
 }
 
 ---@class notify.Config
----@field level string|integer: Minimum log level to display. See vim.log.levels.
----@field timeout number: Default timeout for notification
----@field max_width number | function: Max number of columns for messages
----@field max_height number | function: Max number of lines for a message
----@field stages string | function[]: Animation stages
----@field background_colour string: For stages that change opacity this is treated as the highlight behind the window. Set this to either a highlight group, an RGB hex value e.g. "#000000" or a function returning an RGB code for dynamic values
----@field icons table: Icons for each level (upper case names)
----@field on_open function: Function called when a new window is opened, use for changing win settings/config
----@field on_close function: Function called when a window is closed
----@field render function | string: Function to render a notification buffer or a built-in renderer name
----@field minimum_width integer: Minimum width for notification windows
----@field fps integer: Frames per second for animation stages, higher value means smoother animations but more CPU usage
----@field top_down boolean: whether or not to position the notifications at the top or not
+---@field level string|integer Minimum log level to display. See vim.log.levels.
+---@field timeout number Default timeout for notification
+---@field max_width number|function Max number of columns for messages
+---@field max_height number|function Max number of lines for a message
+---@field stages string|function[] Animation stages
+---@field background_colour string For stages that change opacity this is treated as the highlight behind the window. Set this to either a highlight group, an RGB hex value e.g. "#000000" or a function returning an RGB code for dynamic values
+---@field icons table Icons for each level (upper case names)
+---@field time_formats table Time formats for different kind of notifications
+---@field on_open function Function called when a new window is opened, use for changing win settings/config
+---@field on_close function Function called when a window is closed
+---@field render function|string Function to render a notification buffer or a built-in renderer name
+---@field minimum_width integer Minimum width for notification windows
+---@field fps integer Frames per second for animation stages, higher value means smoother animations but more CPU usage
+---@field top_down boolean whether or not to position the notifications at the top or not
 
 local opacity_warned = false
 
@@ -106,11 +100,11 @@ Defaulting to #000000]], "warn", {
 end
 
 function Config._format_default()
-  local lines = { "<pre>", "Default values:" }
+  local lines = { "Default values:", ">lua" }
   for line in vim.gsplit(vim.inspect(default_config), "\n", true) do
     table.insert(lines, "  " .. line)
   end
-  table.insert(lines, "</pre>")
+  table.insert(lines, "<")
   return lines
 end
 
@@ -138,12 +132,12 @@ function Config.setup(custom_config)
     return tonumber(user_config.background_colour():gsub("#", "0x"), 16)
   end
 
-  function config.icons()
-    return user_config.icons
+  function config.time_formats()
+    return user_config.time_formats
   end
 
-  function config.anchor()
-    return user_config.anchor
+  function config.icons()
+    return user_config.icons
   end
 
   function config.stages()
@@ -175,22 +169,28 @@ function Config.setup(custom_config)
   end
 
   function config.max_width()
-    return util.is_callable(user_config.max_width) and user_config.max_width() or user_config.max_width
+    return util.is_callable(user_config.max_width) and user_config.max_width()
+      or user_config.max_width
   end
 
   function config.max_height()
-    return util.is_callable(user_config.max_height) and user_config.max_height() or user_config.max_height
+    return util.is_callable(user_config.max_height) and user_config.max_height()
+      or user_config.max_height
   end
 
   local stages = config.stages()
 
-  local needs_opacity = vim.tbl_contains({ BUILTIN_STAGES.FADE_IN_SLIDE_OUT, BUILTIN_STAGES.FADE }, stages)
+  local needs_opacity =
+    vim.tbl_contains({ BUILTIN_STAGES.FADE_IN_SLIDE_OUT, BUILTIN_STAGES.FADE }, stages)
 
   if needs_opacity and not vim.opt.termguicolors:get() then
     user_config.stages = BUILTIN_STAGES.STATIC
     vim.schedule(function()
-      vim.notify("Opacity changes require termguicolors to be set.\nChange to different animation stages or set termguicolors to disable this warning"
-        , "warn", { title = "nvim-notify" })
+      vim.notify(
+        "Opacity changes require termguicolors to be set.\nChange to different animation stages or set termguicolors to disable this warning",
+        "warn",
+        { title = "nvim-notify" }
+      )
     end)
   end
 

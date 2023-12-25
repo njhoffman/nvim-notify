@@ -45,7 +45,7 @@ function NotificationService:_run()
   end, 1000 / self._fps)
 end
 
----@param notif Notification
+---@param notif notify.Notification;q
 ---@return integer
 function NotificationService:push(notif)
   local buf = vim.api.nvim_create_buf(false, true)
@@ -66,10 +66,8 @@ end
 
 function NotificationService:replace(id, notif)
   local existing = self._buffers[id]
-  if not existing then
-    vim.notify('No matching notification found to replace: ' .. id .. '\n'
-      .. vim.inspect(self._buffers), 'warn', { title = 'nvim-notify' })
-
+  if not (existing and existing:is_valid()) then
+    vim.notify("No matching notification found to replace")
     return
   end
   existing:set_notification(notif)
