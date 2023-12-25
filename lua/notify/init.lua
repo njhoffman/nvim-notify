@@ -213,7 +213,8 @@ function notify.instance(user_config, inherit)
       end
       local existing = notifications[opts.replace]
       if not existing then
-        vim.notify("Invalid notification to replace", "error", { title = "nvim-notify" })
+        vim.notify('Invalid notification to replace: ' .. opts.replace .. '\n'
+          .. vim.inspect(opts), 'error', { title = 'nvim-notify' })
         return
       end
       local notif_keys = {
