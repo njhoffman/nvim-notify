@@ -24,7 +24,7 @@ local ANCHORS = {
   CENTER = "C",
   BOTTOM_LEFT = "BL",
   BOTTOM_CENTER = "BC",
-  BOTTOM_RIGHT = "BR"
+  BOTTOM_RIGHT = "BR",
 }
 
 local default_config = {
@@ -125,9 +125,9 @@ function Config.setup(custom_config)
   function config.level()
     local level = user_config.level
     if type(level) == "number" then
-      level = vim.lsp.log_levels[level] or vim.lsp.log_levels.INFO
+      return level
     end
-    return vim.lsp.log_levels[vim.fn.toupper(level)] or vim.lsp.log_levels.INFO
+    return vim.log.levels[vim.fn.toupper(level)] or vim.log.levels.INFO
   end
 
   function config.fps()
@@ -175,28 +175,22 @@ function Config.setup(custom_config)
   end
 
   function config.max_width()
-    return util.is_callable(user_config.max_width) and user_config.max_width()
-        or user_config.max_width
+    return util.is_callable(user_config.max_width) and user_config.max_width() or user_config.max_width
   end
 
   function config.max_height()
-    return util.is_callable(user_config.max_height) and user_config.max_height()
-        or user_config.max_height
+    return util.is_callable(user_config.max_height) and user_config.max_height() or user_config.max_height
   end
 
   local stages = config.stages()
 
-  local needs_opacity =
-    vim.tbl_contains({ BUILTIN_STAGES.FADE_IN_SLIDE_OUT, BUILTIN_STAGES.FADE }, stages)
+  local needs_opacity = vim.tbl_contains({ BUILTIN_STAGES.FADE_IN_SLIDE_OUT, BUILTIN_STAGES.FADE }, stages)
 
   if needs_opacity and not vim.opt.termguicolors:get() then
     user_config.stages = BUILTIN_STAGES.STATIC
     vim.schedule(function()
-      vim.notify(
-        "Opacity changes require termguicolors to be set.\nChange to different animation stages or set termguicolors to disable this warning",
-        "warn",
-        { title = "nvim-notify" }
-      )
+      vim.notify("Opacity changes require termguicolors to be set.\nChange to different animation stages or set termguicolors to disable this warning"
+        , "warn", { title = "nvim-notify" })
     end)
   end
 

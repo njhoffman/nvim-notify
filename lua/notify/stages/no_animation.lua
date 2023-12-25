@@ -19,10 +19,11 @@ return function(direction)
         style = "minimal",
       }
     end,
-    function()
+    function(state, win)
       return {
         col = vim.opt.columns:get(),
         time = true,
+        row = stages_util.slot_after_previous(win, state.open_windows, direction),
       }
     end,
   }

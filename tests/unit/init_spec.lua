@@ -17,11 +17,12 @@ describe("checking public interface", function()
 
   describe("notifications", function()
     it("returns all previous notifications", function()
-      notify("test", "error")
+      notify.notify("test", "error")
       local notifs = notify.history()
       assert.are.same({
         {
           icon = "",
+          id = 1,
           level = "ERROR",
           message = { "test" },
           render = notifs[1].render,
@@ -59,8 +60,8 @@ describe("checking public interface", function()
 
     describe("replacing", function()
       it("inherits options", function()
-        local orig = notify("first", "info", { title = "test", icon = "x" })
-        local next = notify("second", nil, { replace = orig })
+        local orig = notify.notify("first", "info", { title = "test", icon = "x" })
+        local next = notify.notify("second", nil, { replace = orig })
 
         assert.are.same(
           next,

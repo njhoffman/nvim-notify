@@ -47,7 +47,7 @@ end
 ---@field on_open function: Callback for when window opens, receives window as argument.
 ---@field on_close function: Callback for when window closes, receives window as argument.
 ---@field keep function: Function to keep the notification window open after timeout, should return boolean.
----@field render function: Function to render a notification buffer.
+---@field render function|string: Function to render a notification buffer.
 ---@field replace integer | notify.Record: Notification record or the record `id` field. Replace an existing notification if still open. All arguments not given are inherited from the replaced notification including message and level.
 ---@field hide_from_history boolean: Hide this notification from the history
 ---@field anchor string[]: Positional anchor of message (TL,TC,TR,C,BL,BC,BR)
@@ -213,7 +213,8 @@ function notify.instance(user_config, inherit)
       end
       local existing = notifications[opts.replace]
       if not existing then
-        vim.notify("Invalid notification to replace", "error", { title = "nvim-notify" })
+        vim.notify('Invalid notification to replace: ' .. opts.replace .. '\n'
+          .. vim.inspect(opts), 'error', { title = 'nvim-notify' })
         return
       end
       local notif_keys = {
@@ -238,7 +239,7 @@ function notify.instance(user_config, inherit)
     local id = #notifications + 1
     local notification = Notification(id, message, level, opts, instance_config)
     table.insert(notifications, notification)
-    local level_num = vim.lsp.log_levels[notification.level]
+    local level_num = vim.log.levels[notification.level]
     if opts.replace then
       service:replace(opts.replace, notification)
     elseif not level_num or level_num >= instance_config.level() then
@@ -333,7 +334,7 @@ end
 
 setmetatable(notify, {
   __call = function(_, m, l, o)
-    if vim.in_fast_event() then
+    if vim.in_fast_event() or vim.fn.has("vim_starting") == 1 then
       vim.schedule(function()
         notify.notify(m, l, o)
       end)

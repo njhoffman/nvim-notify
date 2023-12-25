@@ -67,7 +67,9 @@ end
 function NotificationService:replace(id, notif)
   local existing = self._buffers[id]
   if not existing then
-    vim.notify("No matching notification found to replace")
+    vim.notify('No matching notification found to replace: ' .. id .. '\n'
+      .. vim.inspect(self._buffers), 'warn', { title = 'nvim-notify' })
+
     return
   end
   existing:set_notification(notif)

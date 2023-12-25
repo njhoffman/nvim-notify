@@ -36,10 +36,16 @@ Then you can install nvim-notify with the package manager of your choice.
 call dein#add("rcarriga/nvim-notify")
 ```
 
-[**vim-plug**](https://github.com/junegunn/vim-plug)
+[**vim-plug**](https://github.com/junegunn/vim-plug):
 
 ```vim
 Plug 'rcarriga/nvim-notify'
+```
+
+[**packer**](https://github.com/wbthomason/packer.nvim):
+
+```lua
+use 'rcarriga/nvim-notify'
 ```
 
 ## Usage
@@ -201,20 +207,24 @@ highlight link NotifyTRACEBody Normal
 
 ### Render Style
 
-The appearance of the notifications can be configured, using either built-in methods or custome functions.
+The appearance of the notifications can be configured, using either built-in methods or custom functions.
 See `:help notify-render()` for details
 
 1. "default"
 
 ![default](https://user-images.githubusercontent.com/24252670/141534868-fdcc9d03-9f7b-47fd-acfc-5a20b98e4e0a.png)
 
-2. "minimal
+2. "minimal"
 
 ![image](https://user-images.githubusercontent.com/24252670/141534952-bb0cf491-5bb4-473c-9a67-8adb5b23b232.png)
 
 3. "simple"
 
 ![image](https://user-images.githubusercontent.com/24252670/191683325-220208a0-90bf-4daa-b375-01b573ca524c.png)
+
+4. "compact"
+
+![image](https://user-images.githubusercontent.com/24252670/212632432-86621888-f885-4074-aed4-d12b5e291ab2.png)
 
 Feel free to submit custom rendering functions to share with others!
 
