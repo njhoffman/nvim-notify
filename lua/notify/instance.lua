@@ -46,8 +46,11 @@ return function(user_config, inherit, global_config)
       end
       local existing = notifications[opts.replace]
       if not existing then
-        vim.notify('Invalid notification to replace: ' .. opts.replace .. '\n'
-          .. vim.inspect(opts), 4, { title = 'nvim-notify' })
+        vim.notify(
+          "Invalid notification to replace: " .. opts.replace .. "\n" .. vim.inspect(opts),
+          4,
+          { title = "nvim-notify" }
+        )
         return
       end
       local notif_keys = {
@@ -92,7 +95,10 @@ return function(user_config, inherit, global_config)
     local notif = notifications[notif_id]
     if not notif then
       vim.notify(
-        "Invalid notification id: " .. notif_id .. '\nnotifications:\n' .. vim.inspect(notifications),
+        "Invalid notification id: "
+          .. notif_id
+          .. "\nnotifications:\n"
+          .. vim.inspect(notifications),
         vim.log.levels.WARN,
         { title = "nvim-notify" }
       )
@@ -153,6 +159,44 @@ return function(user_config, inherit, global_config)
 
   function instance.pending()
     return service and service:pending() or {}
+  end
+
+  function instance.clear_dupes(opts)
+    opts = opts or { sequential = true, use_ids = true }
+    local state = { ids = {}, hashes = {}, skipped = 0, last_id = nil, last_hash = n }
+
+    notifications = vim.tbl_filter(function(notif)
+      local msg_hash = vim.fn.string_hash(notif.message)
+      local skip = false
+      if opts.sequential then
+        if opts.use_ids and state.last_id == notif.id then
+          skip = true
+        elseif state.last_hash == msg_hash then
+          skip = true
+        elseif state.last_hash == msg_hash then
+          skip = true
+        end
+      end
+
+      if
+        opts.use_ids and vim.list_contains(state.ids, notif.id)
+        or vim.list_contains(state.hashes, msg_hash)
+      then
+        skip = true
+      end
+
+      state.last_hash = msg_hash
+      state.last_id = notif.id
+
+      if skip == true then
+        state.skipped = state.skipped + 1
+        return false
+      end
+
+      table.insert(state.ids, notif.id)
+      table.insert(state.hashes, msg_hash)
+      return true
+    end, notifications)
   end
 
   setmetatable(instance, {

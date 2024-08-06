@@ -107,6 +107,16 @@ function notify.history(opts)
   return global_instance.history(opts)
 end
 
+--- Clear records of all previous notifications
+---
+--- You can use the `:NotificationsClear` command to clear the log of previous notif>
+function notify.clear_history()
+  if not global_instance then
+    notify.setup()
+  end
+  return global_instance.clear_history()
+end
+
 ---@class notify.HistoryOpts
 ---@field include_hidden boolean Include notifications hidden from history
 

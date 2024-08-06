@@ -30,6 +30,16 @@ local default_config = {
   minimum_width = 50,
   fps = 30,
   top_down = true,
+  rate_limits = {
+    silence_all = {
+      pending = nil,
+      per_min = nil,
+    },
+    silence_dupes = {
+      pending = nil,
+      per_min = nil,
+    },
+  },
   time_formats = {
     notification_history = "%FT%T",
     notification = "%T",
