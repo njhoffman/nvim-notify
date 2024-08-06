@@ -237,6 +237,10 @@ See `:help notify-render()` for details
 
 4. "compact"
 
+6. "wrapped-compact"
+
+Similar to `minimal`, but lines are wrapped based on `max_width`, some padding is added.
+
 ![image](https://user-images.githubusercontent.com/24252670/212632432-86621888-f885-4074-aed4-d12b5e291ab2.png)
 
 Feel free to submit custom rendering functions to share with others!
