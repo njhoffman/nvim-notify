@@ -5,6 +5,10 @@ return function(bufnr, notif, highlights)
   local icon = notif.icon
   local title = notif.title[1]
 
+  if type(title) == "string" and notif.duplicates then
+    title = string.format("%s x%d", title, #notif.duplicates)
+  end
+
   local prefix
   if type(title) == "string" and #title > 0 then
     prefix = string.format("%s | %s:", icon, title)
@@ -12,6 +16,11 @@ return function(bufnr, notif, highlights)
     prefix = string.format("%s |", icon)
   end
   notif.message[1] = string.format("%s %s", prefix, notif.message[1])
+
+  local message = {
+    string.format("%s %s", prefix, notif.message[1]),
+    unpack(notif.message, 2),
+  }
 
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, notif.message)
 
@@ -21,6 +30,7 @@ return function(bufnr, notif, highlights)
   vim.api.nvim_buf_set_extmark(bufnr, namespace, 0, 0, {
     hl_group = highlights.icon,
     end_col = icon_length + 1,
+    end_line = #message,
     priority = 50,
   })
   vim.api.nvim_buf_set_extmark(bufnr, namespace, 0, icon_length + 1, {

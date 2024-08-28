@@ -7,6 +7,10 @@ return function(bufnr, notif, highlights, config)
   local title = notif.title[1]
   local title_accum = vim.str_utfindex(title)
 
+  if notif.duplicates then
+    title = string.format("%s (x%d)", title, #notif.duplicates)
+  end
+
   local title_buffer = string.rep(
     " ",
     (math.max(max_message_width, title_accum, config.minimum_width()) - title_accum) / 2

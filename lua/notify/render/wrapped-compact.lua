@@ -43,6 +43,9 @@ return function(bufnr, notif, highlights, config)
   local icon = notif.icon
   local title = notif.title[1]
   local prefix
+  if notif.duplicates then
+    prefix = string.format("%s x%d", prefix, #notif.duplicates)
+  end
 
   -- wrap the text & add spacing
   local max_width = config.max_width()

@@ -5,6 +5,33 @@ local WindowAnimator = require("notify.windows")
 local NotificationService = require("notify.service")
 local NotificationBuf = require("notify.service.buffer")
 local stage_util = require("notify.stages.util")
+local parser = require("notify.parser")
+
+local notif_cmp_keys = {
+  "level",
+  "message",
+  "title",
+  "icon",
+}
+
+---@param n1 notify.Notification
+---@param n2 notify.Notification
+---@return boolean
+local function notifications_equal(n1, n2)
+  for _, key in ipairs(notif_cmp_keys) do
+    local v1 = n1[key]
+    local v2 = n2[key]
+    -- NOTE: Notification:new adds time string which causes not-equality, so compare only left title (1st element)
+    if key == "title" then
+      v1 = v1[1]
+      v2 = v2[1]
+    end
+    if not vim.deep_equal(v1, v2) then
+      return false
+    end
+  end
+  return true
+end
 
 ---@param user_config notify.Config
 ---@param inherit? boolean Inherit the global configuration, default true
@@ -38,8 +65,32 @@ return function(user_config, inherit, global_config)
     return require("notify.render")[render]
   end
 
-  function instance.notify(message, level, opts)
-    opts = opts or {}
+  local function process_message(...)
+    -- emit warning if tables are still in message
+    return parser.parse_message(...)
+  end
+
+  ---@param notif notify.Notification
+  ---@return notify.Notification?
+  local function find_duplicate(notif)
+    for _, buf in pairs(animator.notif_bufs) do
+      if notifications_equal(buf._notif, notif) then
+        return buf._notif
+      end
+    end
+  end
+
+  function instance.notify(...)
+    vim.dbglog(...)
+    local message, level, opts = process_message(...)
+    vim.dbglog(
+      tostring(level)
+        .. " "
+        .. tostring(message)
+        .. "\n  =>  "
+        .. vim.fn.join(vim.fn.keys(opts), ", ")
+    )
+
     if opts.replace then
       if type(opts.replace) == "table" then
         opts.replace = opts.replace.id
@@ -75,6 +126,20 @@ return function(user_config, inherit, global_config)
     local notification = Notification(id, message, level, opts, instance_config)
     table.insert(notifications, notification)
     local level_num = vim.log.levels[notification.level]
+
+    if not opts.replace and instance_config.merge_duplicates() then
+      local dup = find_duplicate(notification)
+      if dup then
+        dup.duplicates = dup.duplicates or { dup.id }
+        table.insert(dup.duplicates, notification.id)
+        notification.duplicates = dup.duplicates
+
+        local min_dups = instance_config.merge_duplicates()
+        if min_dups == true or #notification.duplicates >= min_dups + 1 then
+          opts.replace = dup.id
+        end
+      end
+    end
     if opts.replace then
       service:replace(opts.replace, notification)
     elseif not level_num or level_num >= instance_config.level() then

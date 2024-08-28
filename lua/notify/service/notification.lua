@@ -50,6 +50,7 @@ function Notification:new(id, message, level, opts, config)
     animate = opts.animate ~= false,
     render = opts.render,
     hide_from_history = opts.hide_from_history,
+    duplicates = opts.duplicates,
   }
   self.__index = self
   setmetatable(notif, self)

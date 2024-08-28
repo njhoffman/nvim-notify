@@ -2,6 +2,7 @@
 
 local Config = {}
 local util = require("notify.util")
+local parser = require("notify.parser")
 
 require("notify.config.highlights")
 
@@ -24,12 +25,15 @@ local default_config = {
   max_height = nil,
   stages = BUILTIN_STAGES.FADE_IN_SLIDE_OUT,
   render = BUILTIN_RENDERERS.DEFAULT,
+  captures = parser.default_captures,
+  formatter = parser.default_formatter,
   background_colour = "NotifyBackground",
   on_open = nil,
   on_close = nil,
   minimum_width = 50,
   fps = 30,
   top_down = true,
+  merge_duplicates = true,
   rate_limits = {
     silence_all = {
       pending = nil,
@@ -68,6 +72,7 @@ local default_config = {
 ---@field minimum_width integer Minimum width for notification windows
 ---@field fps integer Frames per second for animation stages, higher value means smoother animations but more CPU usage
 ---@field top_down boolean whether or not to position the notifications at the top or not
+---@field merge_duplicates boolean|integer whether to replace visible notification if new one is the same, can be an integer for min duplicate count
 
 local opacity_warned = false
 
@@ -110,12 +115,7 @@ Defaulting to #000000]], "warn", {
 end
 
 function Config._format_default()
-  local lines = { "Default values:", ">lua" }
-  for line in vim.gsplit(vim.inspect(default_config), "\n", true) do
-    table.insert(lines, "  " .. line)
-  end
-  table.insert(lines, "<")
-  return lines
+  return parser.config_formatter(default_config)
 end
 
 function Config.setup(custom_config)
@@ -166,6 +166,10 @@ function Config.setup(custom_config)
     return user_config.top_down
   end
 
+  function config.merge_duplicates()
+    return user_config.merge_duplicates
+  end
+
   function config.on_close()
     return user_config.on_close
   end
@@ -188,6 +192,14 @@ function Config.setup(custom_config)
       or user_config.max_height
   end
 
+  function config.format(...)
+    return util.is_callable(user_config.format) and user_config.format(...)
+  end
+
+  function config.captures()
+    return user_config.captures
+  end
+
   local stages = config.stages()
 
   local needs_opacity =
@@ -205,8 +217,6 @@ function Config.setup(custom_config)
   end
 
   user_config.background_colour = validate_highlight(user_config.background_colour, needs_opacity)
-
-  return config
 end
 
 return Config
