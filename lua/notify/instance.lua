@@ -66,7 +66,6 @@ return function(user_config, inherit, global_config)
   end
 
   local function process_message(...)
-    -- emit warning if tables are still in message
     return parser.parse_message(...)
   end
 

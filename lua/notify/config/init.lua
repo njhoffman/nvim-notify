@@ -115,6 +115,7 @@ Defaulting to #000000]], "warn", {
 end
 
 function Config._format_default()
+  vim.dbglog("FORMAT DEFAULT")
   return parser.config_formatter(default_config)
 end
 
@@ -205,7 +206,7 @@ function Config.setup(custom_config)
   local needs_opacity =
     vim.tbl_contains({ BUILTIN_STAGES.FADE_IN_SLIDE_OUT, BUILTIN_STAGES.FADE }, stages)
 
-  if needs_opacity and not vim.opt.termguicolors:get() then
+  if needs_opacity and not vim.opt.termguicolors:get() and vim.fn.has("nvim-0.10") == 0 then
     user_config.stages = BUILTIN_STAGES.STATIC
     vim.schedule(function()
       vim.notify(
@@ -217,6 +218,8 @@ function Config.setup(custom_config)
   end
 
   user_config.background_colour = validate_highlight(user_config.background_colour, needs_opacity)
+
+  return config
 end
 
 return Config
