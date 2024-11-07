@@ -5,7 +5,7 @@ local WindowAnimator = require("notify.windows")
 local NotificationService = require("notify.service")
 local NotificationBuf = require("notify.service.buffer")
 local stage_util = require("notify.stages.util")
-local parser = require("notify.parser")
+local parsers = require("notify.parsers")
 
 local notif_cmp_keys = {
   "level",
@@ -66,7 +66,7 @@ return function(user_config, inherit, global_config)
   end
 
   local function process_message(...)
-    return parser.parse_message(...)
+    return parsers.parse_message(...)
   end
 
   ---@param notif notify.Notification
@@ -80,15 +80,8 @@ return function(user_config, inherit, global_config)
   end
 
   function instance.notify(...)
-    vim.dbglog(...)
     local message, level, opts = process_message(...)
-    vim.dbglog(
-      tostring(level)
-        .. " "
-        .. tostring(message)
-        .. "\n  =>  "
-        .. vim.fn.join(vim.fn.keys(opts), ", ")
-    )
+    opts = opts or {}
 
     if opts.replace then
       if type(opts.replace) == "table" then

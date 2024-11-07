@@ -2,7 +2,7 @@
 
 local Config = {}
 local util = require("notify.util")
-local parser = require("notify.parser")
+local parsers = require("notify.parsers")
 
 require("notify.config.highlights")
 
@@ -25,8 +25,8 @@ local default_config = {
   max_height = nil,
   stages = BUILTIN_STAGES.FADE_IN_SLIDE_OUT,
   render = BUILTIN_RENDERERS.DEFAULT,
-  captures = parser.default_captures,
-  formatter = parser.default_formatter,
+  captures = parsers.default_captures,
+  formatter = parsers.default_formatter,
   background_colour = "NotifyBackground",
   on_open = nil,
   on_close = nil,

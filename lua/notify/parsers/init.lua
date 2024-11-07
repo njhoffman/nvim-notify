@@ -1,5 +1,5 @@
-local parse_highlights = require("notify.parser.highlights")
-local capture = require("notify.parser.capture")
+local parse_highlights = require("notify.parsers.highlights")
+local capture = require("notify.parsers.capture")
 
 -- handles tables in notification message that either contain body highlights or objects to inspect
 -- returns plain string and table of lines each containing arrays of { Content, HLName? }

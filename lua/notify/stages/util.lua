@@ -85,15 +85,22 @@ local function window_intervals(windows, direction, cmp)
 end
 
 function M.get_slot_range(direction)
-  local top = vim.opt.tabline:get() == "" and 0 or 1
+  local top = vim.opt.showtabline:get() == 0 and 0 or 1
+
+  -- handle a visible winbar
+  if vim.wo.winbar then
+    top = top + 1
+  end
+
   local bottom = vim.opt.lines:get()
     - (vim.opt.cmdheight:get() + (vim.opt.laststatus:get() > 0 and 1 or 0))
+    + 1
   local left = 1
   local right = vim.opt.columns:get()
   if M.DIRECTION.TOP_DOWN == direction then
     return top, bottom
   elseif M.DIRECTION.BOTTOM_UP == direction then
-    return bottom, top
+    return bottom - 3, top
   elseif M.DIRECTION.LEFT_RIGHT == direction then
     return left, right
   elseif M.DIRECTION.RIGHT_LEFT == direction then
@@ -168,7 +175,7 @@ function M.slot_after_previous(win, open_windows, direction)
     return move_slot(
       direction,
       start,
-      cur_win_conf[space_key(direction)] + border_padding(direction, cur_win_conf)
+      cur_win_conf[space_key(direction)] + border_padding(direction, cur_win_conf) / 2
     )
   end
 
