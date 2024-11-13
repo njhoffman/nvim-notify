@@ -3,7 +3,7 @@ local base = require("notify.render.base")
 local util = require("notify.util")
 
 return function(bufnr, notif, highlights, config)
-  local left_icon = notif.icon .. " "
+  local left_icon = notif.icon == "" and "" or notif.icon .. " "
   local max_message_width = util.max_line_width(notif.message)
   local right_title = notif.title[2]
   local left_title = notif.title[1]
@@ -47,12 +47,14 @@ return function(bufnr, notif, highlights, config)
     virt_text_win_col = 0,
     priority = 10,
   })
-  api.nvim_buf_set_lines(bufnr, 2, -1, false, notif.message)
+
+  local message = notif.message
+  api.nvim_buf_set_lines(bufnr, 2, -1, false, message)
 
   api.nvim_buf_set_extmark(bufnr, namespace, 2, 0, {
     hl_group = highlights.body,
-    end_line = 1 + #notif.message,
-    end_col = #notif.message[#notif.message],
+    end_line = 1 + #message,
+    end_col = #message[#message],
     priority = 50, -- Allow treesitter to override
   })
 end

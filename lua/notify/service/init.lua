@@ -67,8 +67,12 @@ end
 function NotificationService:replace(id, notif)
   local existing = self._buffers[id]
   if not (existing and existing:is_valid()) then
-    vim.notify("No matching notification found to replace id: " .. 
-      vim.inspect(id) .. '\n' .. vim.inspect(vim.tbl_keys(self._buffers)))
+    vim.notify(
+      "No matching notification found to replace id: "
+        .. vim.inspect(id)
+        .. "\n"
+        .. vim.inspect(vim.tbl_keys(self._buffers))
+    )
     return
   end
   existing:set_notification(notif)
@@ -87,6 +91,10 @@ function NotificationService:replace(id, notif)
       "&winhl",
       "Normal:" .. existing.highlights.body .. ",FloatBorder:" .. existing.highlights.border
     )
+
+    -- vim.api.nvim_win_set_width(win, existing:width())
+    -- vim.api.nvim_win_set_height(win, existing:height())
+
     self._animator:on_refresh(win)
   end
 end

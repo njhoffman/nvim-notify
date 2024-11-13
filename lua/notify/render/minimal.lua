@@ -14,8 +14,8 @@ return function(bufnr, notif, highlights)
 
   api.nvim_buf_set_extmark(bufnr, namespace, 0, 0, {
     hl_group = highlights.icon,
-    end_line = #notif.message - 1,
-    end_col = #notif.message[#notif.message],
+    end_line = #message - 1,
+    end_col = #message[#message],
     priority = 50,
   })
 end

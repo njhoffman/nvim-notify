@@ -2,7 +2,6 @@ local M = {}
 
 local min, max, floor = math.min, math.max, math.floor
 local rshift, lshift, band, bor = bit.rshift, bit.lshift, bit.band, bit.bor
-local strwidth = vim.api.nvim_strwidth or vim.fn.strchars
 
 function M.is_callable(obj)
   return type(obj) == "function" or (type(obj) == "table" and obj.__call)
@@ -118,6 +117,8 @@ function M.highlight(name, fields)
     vim.cmd("hi " .. name .. fields_string)
   end
 end
+
+local strwidth = vim.str_utfindex or vim.api.nvim_strwidth or vim.fn.strchars
 
 --- Calculate the max render width of a message
 ---@param msg string[]|nil

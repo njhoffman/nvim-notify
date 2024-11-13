@@ -68,7 +68,7 @@ end
 --- <
 ---@param message string|string[] Notification message
 ---@param level string|number Log level. See vim.log.levels
----@param opts notify.Options Notification options
+---@param opts notify.Options? Notification options
 ---@return notify.Record
 function notify.notify(message, level, opts)
   if not global_instance then
