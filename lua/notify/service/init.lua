@@ -2,6 +2,7 @@ local util = require("notify.util")
 local NotificationBuf = require("notify.service.buffer")
 
 ---@class NotificationService
+---@field private _config notify.ServiceConfig
 ---@field private _running boolean
 ---@field private _pending FIFOQueue
 ---@field private _animator WindowAnimator
@@ -75,11 +76,19 @@ function NotificationService:replace(id, notif)
     )
     return
   end
+  local prev = vim.deepcopy(existing)
   existing:set_notification(notif)
   self._buffers[id] = nil
   self._buffers[notif.id] = existing
   pcall(existing.render, existing)
+
   local win = vim.fn.bufwinid(existing:buffer())
+  if notif.on_replace then
+    notif.on_replace(win, prev, existing)
+  end
+  if self._config.on_replace() then
+    self._config.on_replace()(win, prev, existing)
+  end
   if win ~= -1 then
     -- Highlights can change name if level changed so we have to re-link
     -- vim.wo does not behave like setlocal, thus we use setwinvar to set a

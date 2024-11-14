@@ -1,5 +1,9 @@
 local stages_util = require("notify.stages.util")
 
+local opacity = 85
+local freq = { 3, 3, 2.5, 2, 3 }
+-- local freq = { 5, 5, 2.5, 2, 3 }
+
 return function(direction)
   return {
     function(state)
@@ -22,11 +26,11 @@ return function(direction)
     end,
     function(state, win)
       return {
-        opacity = { 100 },
+        opacity = { opacity },
         col = { vim.opt.columns:get() },
         row = {
           stages_util.slot_after_previous(win, state.open_windows, direction),
-          frequency = 3,
+          frequency = freq[1],
           complete = function()
             return true
           end,
@@ -39,7 +43,7 @@ return function(direction)
         time = true,
         row = {
           stages_util.slot_after_previous(win, state.open_windows, direction),
-          frequency = 3,
+          frequency = freq[2],
           complete = function()
             return true
           end,
@@ -50,7 +54,7 @@ return function(direction)
       return {
         width = {
           1,
-          frequency = 2.5,
+          frequency = freq[3],
           damping = 0.9,
           complete = function(cur_width)
             return cur_width < 3
@@ -58,7 +62,7 @@ return function(direction)
         },
         opacity = {
           0,
-          frequency = 2,
+          frequency = freq[4],
           complete = function(cur_opacity)
             return cur_opacity <= 4
           end,
@@ -66,7 +70,7 @@ return function(direction)
         col = { vim.opt.columns:get() },
         row = {
           stages_util.slot_after_previous(win, state.open_windows, direction),
-          frequency = 3,
+          frequency = freq[5],
           complete = function()
             return true
           end,

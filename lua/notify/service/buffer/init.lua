@@ -1,6 +1,6 @@
 local api = vim.api
 
-local NotifyBufHighlights = require('notify.service.buffer.highlights')
+local NotifyBufHighlights = require("notify.service.buffer.highlights")
 
 ---@class NotificationBuf
 ---@field highlights NotifyBufHighlights
@@ -14,8 +14,8 @@ local NotifyBufHighlights = require('notify.service.buffer.highlights')
 local NotificationBuf = {}
 
 local BufState = {
-  OPEN = 'open',
-  CLOSED = 'close',
+  OPEN = "open",
+  CLOSED = "close",
 }
 
 function NotificationBuf:new(kwargs)
@@ -40,7 +40,7 @@ end
 
 function NotificationBuf:_create_highlights()
   local existing_opacity = self.highlights and self.highlights.opacity or 100
-  self.highlights = NotifyBufHighlights(self._notif.level, self._buffer, self._config)
+  self.highlights = NotifyBufHighlights(self._notif, self._buffer, self._config)
   if existing_opacity < 100 then
     self.highlights:set_opacity(existing_opacity)
   end
@@ -52,6 +52,12 @@ function NotificationBuf:open(win)
   end
   self._state = BufState.OPEN
   local record = self._notif:record()
+
+  if record.filetype and record.filetype ~= "" then
+    local buf = vim.api.nvim_win_get_buf(win)
+    api.nvim_set_option_value("filetype", record.filetype, { buf = buf })
+  end
+
   if self._notif.on_open then
     self._notif.on_open(win, record)
   end
@@ -99,14 +105,13 @@ function NotificationBuf:render()
   local notif = self._notif
   local buf = self._buffer
 
-  local render_namespace = require('notify.render.base').namespace()
-  api.nvim_buf_set_option(buf, 'filetype', 'notify')
-  api.nvim_buf_set_option(buf, 'modifiable', true)
+  local render_namespace = require("notify.render.base").namespace()
+
+  api.nvim_buf_set_option(buf, "modifiable", true)
   api.nvim_buf_clear_namespace(buf, render_namespace, 0, -1)
 
   notif.render(buf, notif, self.highlights, self._config)
-
-  api.nvim_buf_set_option(buf, 'modifiable', false)
+  api.nvim_set_option_value("modifiable", false, { buf = buf })
 
   local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
   local width = self._config.minimum_width()
@@ -122,7 +127,7 @@ function NotificationBuf:render()
   for _, mark in ipairs(extmarks) do
     local details = mark[4]
     for _, virt_text in ipairs(details.virt_text or {}) do
-      virt_texts[mark[2]] = (virt_texts[mark[2]] or '') .. virt_text[1]
+      virt_texts[mark[2]] = (virt_texts[mark[2]] or "") .. virt_text[1]
     end
   end
   for _, text in pairs(virt_texts) do
@@ -154,6 +159,6 @@ end
 ---@return NotificationBuf
 return function(buf, notification, opts)
   return NotificationBuf:new(
-    vim.tbl_extend('keep', { buffer = buf, notif = notification }, opts or {})
+    vim.tbl_extend("keep", { buffer = buf, notif = notification }, opts or {})
   )
 end

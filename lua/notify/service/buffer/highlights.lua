@@ -29,7 +29,9 @@ local function get_hl(name)
   return definition
 end
 
-function NotifyBufHighlights:new(level, buffer, config)
+function NotifyBufHighlights:new(notif, buffer, config)
+  local level = notif.level or "INFO"
+
   local function linked_group(section)
     local orig = "Notify" .. level .. section
     if vim.fn.hlID(orig) == 0 then
@@ -53,14 +55,37 @@ function NotifyBufHighlights:new(level, buffer, config)
     [body] = body_def,
     [icon] = icon_def,
   }
+
+  local content = {}
+
+  local embedded_hls = vim.tbl_get(notif, "highlights", "body")
+  local level_hls = vim.tbl_get(notif, "highlights", "level")
+  if embedded_hls then
+    -- predefined content highlights  { "Comment", 3, 9, 14 }
+    for _, hl_group in ipairs(embedded_hls) do
+      local _content, _content_def = linked_group(hl_group[1], true, true)
+      groups[_content] = _content_def
+      content[hl_group[1]] = _content
+    end
+  elseif level_hls then
+    -- special field for custom highlights for each level
+    for _, hl_group in ipairs(level_hls) do
+      local _content, _content_def = linked_group(hl_group[1], true, false)
+      groups[_content] = _content_def
+      content[hl_group[1]] = _content
+    end
+  end
+
   local buf_highlights = {
     groups = groups,
     opacity = 100,
     border = border,
     body = body,
+    content = content,
     title = title,
     icon = icon,
     buffer = buffer,
+    background_colour = config.background_colour(),
     _config = config,
   }
   self.__index = self
@@ -168,6 +193,17 @@ function NotifyBufHighlights:set_opacity(alpha)
       hl_string = hl_string
         .. " guibg=#"
         .. string.format("%06x", util.blend(fields.background, background, alpha / 100))
+    end
+
+    if fields.special then
+      hl_string = hl_string
+        .. " guisp=#"
+        .. string.format("%06x", util.blend(fields.special, background, alpha / 100))
+    end
+    for _, style in ipairs({ "bold", "italic", "underline" }) do
+      if fields[style] then
+        hl_string = hl_string .. " gui=" .. style
+      end
     end
 
     if hl_string ~= "" then

@@ -5,6 +5,7 @@
 ---@field timeout number | nil
 ---@field title string[]
 ---@field icon string
+---@field filetype string
 ---@field time number
 ---@field width number
 ---@field animate boolean
@@ -12,8 +13,10 @@
 ---@field keep fun(): boolean
 ---@field on_open fun(win: number, record: notify.Record) | nil
 ---@field on_close fun(win: number, record: notify.Record) | nil
+---@field on_replace fun(win: number, prev: notify.Notification, next: notify.Notification) | nil
 ---@field render fun(buf: integer, notification: notify.Notification, highlights: table<string, string>)
 ---@field duplicates? integer[] shared list of duplicate notifications by id
+---@field highlights? string[] directly define title, body, border, or icon highlights
 local Notification = {}
 
 local level_maps = vim.tbl_extend("keep", {}, vim.log.levels)
@@ -34,11 +37,27 @@ function Notification:new(id, message, level, opts, config)
   if type(title) == "string" then
     title = { title, vim.fn.strftime(config.time_formats().notification, time) }
   end
+
+  local filetype = "notify"
+  if type(opts.filetype) == "function" then
+    filetype = opts.filetype()
+  elseif type(opts.filetype) == "string" then
+    filetype = opts.filetype
+  elseif
+    not (opts.highlights and type(opts.highlights.body) ~= "nil")
+    and type(opts.filetype) == "nil"
+    and vim.fn.toupper(level) ~= "ERROR"
+    and #message > 1
+  then
+    filetype = "lua"
+  end
+
   vim.validate({
     message = { message, "table" },
     level = { level, "string" },
     title = { title, "table" },
   })
+
   local notif = {
     id = id,
     message = message,
@@ -46,13 +65,16 @@ function Notification:new(id, message, level, opts, config)
     icon = opts.icon or config.icons()[level] or config.icons().INFO,
     time = time,
     timeout = opts.timeout,
+    filetype = filetype,
     level = level,
     keep = opts.keep,
     on_open = opts.on_open,
     on_close = opts.on_close,
+    on_replace = opts.on_replace,
     animate = opts.animate ~= false,
     render = opts.render,
     hide_from_history = opts.hide_from_history,
+    highlights = opts.highlights,
     duplicates = opts.duplicates,
   }
   self.__index = self
@@ -69,6 +91,9 @@ function Notification:record()
     title = self.title,
     icon = self.icon,
     render = self.render,
+    filetype = self.filetype,
+    highlights = self.highlights,
+    -- duplicates = self.duplicates,
   }
 end
 
