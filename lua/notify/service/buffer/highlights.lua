@@ -39,9 +39,15 @@ function NotifyBufHighlights:new(notif, buffer, config)
     end
     local new = orig .. buffer
 
-    vim.api.nvim_set_hl(0, new, { link = orig })
-
-    return new, get_hl(new)
+    if _G._NOTIFY_EXPERIMENTAL then
+      local hl = vim.api.nvim_get_hl(0, { name = orig, create = false, link = false })
+      -- Removes the unwanted 'default' key, as we will copy the table for updating the highlight later.
+      hl.default = nil
+      return new, hl
+    else
+      vim.api.nvim_set_hl(0, new, { link = orig })
+      return new, get_hl(new)
+    end
   end
 
   local title, title_def = linked_group("Title")
@@ -108,7 +114,12 @@ function NotifyBufHighlights:_redefine_treesitter()
       return new
     end
     vim.api.nvim_set_hl(0, new, { link = orig })
-    self.groups[new] = get_hl(new)
+
+    if _G._NOTIFY_EXPERIMENTAL then
+      self.groups[new] = vim.api.nvim_get_hl(0, { name = new, link = false })
+    else
+      self.groups[new] = get_hl(new)
+    end
     return new
   end
 
@@ -173,42 +184,71 @@ function NotifyBufHighlights:_redefine_treesitter()
 end
 
 function NotifyBufHighlights:set_opacity(alpha)
-  if
-    not self._treesitter_redefined
-    and vim.api.nvim_buf_get_option(self.buffer, "filetype") ~= "notify"
-  then
-    self:_redefine_treesitter()
-  end
-  self.opacity = alpha
-  local background = self._config.background_colour()
-  for group, fields in pairs(self.groups) do
-    local updated_fields = {}
-    vim.api.nvim_set_hl(0, group, updated_fields)
-    local hl_string = ""
-    if fields.foreground then
-      hl_string = "guifg=#"
-        .. string.format("%06x", util.blend(fields.foreground, background, alpha / 100))
+  if _G._NOTIFY_EXPERIMENTAL then
+    if
+      not self._treesitter_redefined
+      and vim.api.nvim_get_option_value("filetype", { buf = self.buffer }) ~= "notify"
+    then
+      self:_redefine_treesitter()
     end
-    if fields.background then
-      hl_string = hl_string
-        .. " guibg=#"
-        .. string.format("%06x", util.blend(fields.background, background, alpha / 100))
-    end
+    self.opacity = alpha
+    local background = self._config.background_colour()
+    local updated = false
+    for group, fields in pairs(self.groups) do
+      local fg = fields.fg
+      if fg then
+        fg = util.blend(fg, background, alpha / 100)
+      end
+      local bg = fields.bg
+      if bg then
+        bg = util.blend(bg, background, alpha / 100)
+      end
 
-    if fields.special then
-      hl_string = hl_string
-        .. " guisp=#"
-        .. string.format("%06x", util.blend(fields.special, background, alpha / 100))
-    end
-    for _, style in ipairs({ "bold", "italic", "underline" }) do
-      if fields[style] then
-        hl_string = hl_string .. " gui=" .. style
+      if fg ~= fields.fg or bg ~= fields.bg then
+        local hl = vim.tbl_extend("force", fields, { fg = fg, bg = bg })
+        vim.api.nvim_set_hl(0, group, hl)
+        updated = true
       end
     end
+    return updated
+  else
+    if
+      not self._treesitter_redefined
+      and vim.api.nvim_buf_get_option(self.buffer, "filetype") ~= "notify"
+    then
+      self:_redefine_treesitter()
+    end
+    self.opacity = alpha
+    local background = self._config.background_colour()
+    for group, fields in pairs(self.groups) do
+      local updated_fields = {}
+      vim.api.nvim_set_hl(0, group, updated_fields)
+      local hl_string = ""
+      if fields.foreground then
+        hl_string = "guifg=#"
+          .. string.format("%06x", util.blend(fields.foreground, background, alpha / 100))
+      end
+      if fields.background then
+        hl_string = hl_string
+          .. " guibg=#"
+          .. string.format("%06x", util.blend(fields.background, background, alpha / 100))
+      end
 
-    if hl_string ~= "" then
-      -- Can't use nvim_set_hl https://github.com/neovim/neovim/issues/18160
-      vim.cmd("hi " .. group .. " " .. hl_string)
+      if fields.special then
+        hl_string = hl_string
+          .. " guisp=#"
+          .. string.format("%06x", util.blend(fields.special, background, alpha / 100))
+      end
+      for _, style in ipairs({ "bold", "italic", "underline" }) do
+        if fields[style] then
+          hl_string = hl_string .. " gui=" .. style
+        end
+      end
+
+      if hl_string ~= "" then
+        -- Can't use nvim_set_hl https://github.com/neovim/neovim/issues/18160
+        vim.cmd("hi " .. group .. " " .. hl_string)
+      end
     end
   end
 end

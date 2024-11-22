@@ -273,51 +273,101 @@ function WindowAnimator:_get_dimensions(notif_buf)
 end
 
 function WindowAnimator:_apply_win_state(win, win_state)
-  local win_updated = false
-  if win_state.opacity then
-    win_updated = true
-    local notif_buf = self.notif_bufs[win]
-    if notif_buf:is_valid() then
-      notif_buf.highlights:set_opacity(win_state.opacity.position)
-      vim.fn.setwinvar(
-        win,
-        "&winhl",
-        "Normal:" .. notif_buf.highlights.body .. ",FloatBorder:" .. notif_buf.highlights.border
-      )
+  if _G._NOTIFY_EXPERIMENTAL then
+    local hl_updated = false
+    if win_state.opacity then
+      local notif_buf = self.notif_bufs[win]
+      if notif_buf:is_valid() then
+        hl_updated = notif_buf.highlights:set_opacity(win_state.opacity.position)
+        vim.fn.setwinvar(
+          win,
+          "&winhl",
+          "Normal:" .. notif_buf.highlights.body .. ",FloatBorder:" .. notif_buf.highlights.border
+        )
+      end
     end
-  end
-  local exists, conf = util.get_win_config(win)
-  local new_conf = {}
-  if not exists then
-    self:_remove_win(win)
+    local exists, conf = util.get_win_config(win)
+    local new_conf = {}
+    local win_updated = false
+    if not exists then
+      self:_remove_win(win)
+    else
+      local function set_field(field, min, round_to)
+        if not win_state[field] then
+          return
+        end
+        local new_value = max(round(win_state[field].position, round_to), min)
+        if new_value == conf[field] then
+          return
+        end
+        win_updated = true
+        new_conf[field] = new_value
+      end
+
+      set_field("row", 0, 1)
+      set_field("col", 0, 1)
+      set_field("width", 1)
+      set_field("height", 1)
+
+      if win_updated then
+        if new_conf.row or new_conf.col then
+          new_conf.relative = conf.relative
+          new_conf.row = new_conf.row or conf.row
+          new_conf.col = new_conf.col or conf.col
+        end
+        api.nvim_win_set_config(win, new_conf)
+      end
+    end
+    -- The 'flush' key is set to enforce redrawing during blocking event.
+    vim.api.nvim__redraw({ win = win, valid = false, flush = true })
+    return hl_updated or win_updated
   else
-    local function set_field(field, min, round_to)
-      if not win_state[field] then
-        return
-      end
-      local new_value = max(round(win_state[field].position, round_to), min)
-      if new_value == conf[field] then
-        return
-      end
+    local win_updated = false
+    if win_state.opacity then
       win_updated = true
-      new_conf[field] = new_value
-    end
-
-    set_field("row", 0, 1)
-    set_field("col", 0, 1)
-    set_field("width", 1)
-    set_field("height", 1)
-
-    if win_updated then
-      if new_conf.row or new_conf.col then
-        new_conf.relative = conf.relative
-        new_conf.row = new_conf.row or conf.row
-        new_conf.col = new_conf.col or conf.col
+      local notif_buf = self.notif_bufs[win]
+      if notif_buf:is_valid() then
+        notif_buf.highlights:set_opacity(win_state.opacity.position)
+        vim.fn.setwinvar(
+          win,
+          "&winhl",
+          "Normal:" .. notif_buf.highlights.body .. ",FloatBorder:" .. notif_buf.highlights.border
+        )
       end
-      api.nvim_win_set_config(win, new_conf)
     end
+    local exists, conf = util.get_win_config(win)
+    local new_conf = {}
+    if not exists then
+      self:_remove_win(win)
+    else
+      local function set_field(field, min, round_to)
+        if not win_state[field] then
+          return
+        end
+        local new_value = max(round(win_state[field].position, round_to), min)
+        if new_value == conf[field] then
+          return
+        end
+        win_updated = true
+        new_conf[field] = new_value
+      end
+
+      set_field("row", 0, 1)
+      set_field("col", 0, 1)
+      set_field("width", 1)
+      set_field("height", 1)
+
+      if win_updated then
+        if new_conf.row or new_conf.col then
+          new_conf.relative = conf.relative
+          new_conf.row = new_conf.row or conf.row
+          new_conf.col = new_conf.col or conf.col
+        end
+        api.nvim_win_set_config(win, new_conf)
+      end
+    end
+    return win_updated
   end
-  return win_updated
 end
 
 ---@return WindowAnimator
