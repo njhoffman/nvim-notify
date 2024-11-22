@@ -83,12 +83,13 @@ function NotificationService:replace(id, notif)
   pcall(existing.render, existing)
 
   local win = vim.fn.bufwinid(existing:buffer())
-  if notif.on_replace then
-    notif.on_replace(win, prev, existing)
-  end
-  if self._config.on_replace() then
-    self._config.on_replace()(win, prev, existing)
-  end
+  -- if notif.on_replace then
+  --   notif.on_replace(win, prev, existing)
+  -- end
+  -- if self._config.on_replace() then
+  --   self._config.on_replace()(win, prev, existing)
+  -- end
+
   if win ~= -1 then
     -- Highlights can change name if level changed so we have to re-link
     -- vim.wo does not behave like setlocal, thus we use setwinvar to set a

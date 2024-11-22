@@ -35,12 +35,21 @@ end
 
 function NotificationBuf:set_notification(notif)
   self._notif = notif
+
   self:_create_highlights()
 end
 
 function NotificationBuf:_create_highlights()
   local existing_opacity = self.highlights and self.highlights.opacity or 100
   self.highlights = NotifyBufHighlights(self._notif, self._buffer, self._config)
+  -- vim.dbglog(
+  --   "notif",
+  --   self._notif.filetype,
+  --   self._notif.level,
+  --   self._notif.message,
+  --   self._notif.title,
+  --   self.highlights.groups
+  -- )
   if existing_opacity < 100 then
     self.highlights:set_opacity(existing_opacity)
   end
@@ -51,12 +60,9 @@ function NotificationBuf:open(win)
     return
   end
   self._state = BufState.OPEN
-  local record = self._notif:record()
 
-  if record.filetype and record.filetype ~= "" then
-    local buf = vim.api.nvim_win_get_buf(win)
-    api.nvim_set_option_value("filetype", record.filetype, { buf = buf })
-  end
+  -- local buf = vim.api.nvim_win_get_buf(win)
+  local record = self._notif:record()
 
   if self._notif.on_open then
     self._notif.on_open(win, record)
@@ -105,10 +111,34 @@ function NotificationBuf:render()
   local notif = self._notif
   local buf = self._buffer
 
+  if notif.filetype and notif.filetype ~= "" then
+    api.nvim_set_option_value("filetype", notif.filetype, { buf = buf })
+  end
+
   local render_namespace = require("notify.render.base").namespace()
 
-  api.nvim_buf_set_option(buf, "modifiable", true)
+  api.nvim_set_option_value("modifiable", true, { buf = buf })
   api.nvim_buf_clear_namespace(buf, render_namespace, 0, -1)
+
+  -- local extmarks =
+  --   vim.api.nvim_buf_get_extmarks(buf, -1, 0, -1, { details = true, type = "highlight" })
+  -- local extmarks_out = ""
+  -- for _, extmark in ipairs(extmarks) do
+  --   extmarks_out = extmarks_out
+  --     .. "\n    "
+  --     .. extmark[1]
+  --     .. " "
+  --     .. extmark[2]
+  --     .. ":"
+  --     .. extmark[3]
+  --     .. " - "
+  --     .. extmark[4].end_row
+  --     .. ":"
+  --     .. extmark[4].end_col
+  --     .. " "
+  --     .. extmark[4].hl_group
+  -- end
+  -- vim.dbglog(notif.filetype, notif.title, notif.message, extmarks_out)
 
   notif.render(buf, notif, self.highlights, self._config)
   api.nvim_set_option_value("modifiable", false, { buf = buf })

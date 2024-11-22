@@ -16,8 +16,15 @@
 ---@field on_replace fun(win: number, prev: notify.Notification, next: notify.Notification) | nil
 ---@field render fun(buf: integer, notification: notify.Notification, highlights: table<string, string>)
 ---@field duplicates? integer[] shared list of duplicate notifications by id
----@field highlights? string[] directly define title, body, border, or icon highlights
+---@field hl_config? string[]
 local Notification = {}
+
+-- local hl_config = {
+--   prefix = "Notify",
+--   levels = { "TRACE", "DEBUG", "INFO", "WARN", "ERROR" },
+--   sections = { body = "Body", border = "Border", title = "Title", icon = "Icon" },
+--   groups = { body = "", border = "", title = "", icon = "" },
+-- }
 
 local level_maps = vim.tbl_extend("keep", {}, vim.log.levels)
 for k, v in pairs(vim.log.levels) do
@@ -74,9 +81,10 @@ function Notification:new(id, message, level, opts, config)
     animate = opts.animate ~= false,
     render = opts.render,
     hide_from_history = opts.hide_from_history,
-    highlights = opts.highlights,
+    -- highlights = opts.highlights,
     duplicates = opts.duplicates,
   }
+
   self.__index = self
   setmetatable(notif, self)
   return notif
@@ -92,8 +100,8 @@ function Notification:record()
     icon = self.icon,
     render = self.render,
     filetype = self.filetype,
-    highlights = self.highlights,
-    -- duplicates = self.duplicates,
+    -- highlights = self.highlights,
+    duplicates = self.duplicates,
   }
 end
 
