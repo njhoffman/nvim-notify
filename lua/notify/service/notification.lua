@@ -16,7 +16,8 @@
 ---@field on_replace fun(win: number, prev: notify.Notification, next: notify.Notification) | nil
 ---@field render fun(buf: integer, notification: notify.Notification, highlights: table<string, string>)
 ---@field duplicates? integer[] shared list of duplicate notifications by id
----@field hl_config? string[]
+---@field highlights? table?
+
 local Notification = {}
 
 -- local hl_config = {
@@ -45,18 +46,16 @@ function Notification:new(id, message, level, opts, config)
     title = { title, vim.fn.strftime(config.time_formats().notification, time) }
   end
 
-  local filetype = "notify"
+  local filetype = "lua"
   if type(opts.filetype) == "function" then
     filetype = opts.filetype()
   elseif type(opts.filetype) == "string" then
     filetype = opts.filetype
-  elseif
-    not (opts.highlights and type(opts.highlights.body) ~= "nil")
-    and type(opts.filetype) == "nil"
-    and vim.fn.toupper(level) ~= "ERROR"
-    and #message > 1
-  then
-    filetype = "lua"
+    -- elseif
+    --   not vim.tbl_get(opts, "highlights", "inline")
+    --   and type(opts.filetype) == "nil"
+    --   and vim.fn.toupper(level) ~= "ERROR"
+    --   and #message > 1
   end
 
   vim.validate({
@@ -81,7 +80,7 @@ function Notification:new(id, message, level, opts, config)
     animate = opts.animate ~= false,
     render = opts.render,
     hide_from_history = opts.hide_from_history,
-    -- highlights = opts.highlights,
+    highlights = opts.highlights,
     duplicates = opts.duplicates,
   }
 
@@ -99,9 +98,9 @@ function Notification:record()
     title = self.title,
     icon = self.icon,
     render = self.render,
-    filetype = self.filetype,
-    -- highlights = self.highlights,
     duplicates = self.duplicates,
+    filetype = self.filetype,
+    highlights = self.highlights,
   }
 end
 

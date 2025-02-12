@@ -30,10 +30,18 @@ local default_config = {
   background_colour = "NotifyBackground",
   on_open = nil,
   on_close = nil,
+  on_replace = nil,
   minimum_width = 50,
   fps = 30,
   top_down = true,
   merge_duplicates = true,
+  highlights = {
+    body = nil,
+    border = nil,
+    icon = nil,
+    title = nil,
+    inline = nil,
+  },
   rate_limits = {
     silence_all = {
       pending = nil,
@@ -68,11 +76,13 @@ local default_config = {
 ---@field time_formats table? Time formats for different kind of notifications
 ---@field on_open function? Function called when a new window is opened, use for changing win settings/config
 ---@field on_close function? Function called when a window is closed
+---@field on_replace function? Function called when a window is replaced
 ---@field render function|string|nil Function to render a notification buffer or a built-in renderer name
 ---@field minimum_width integer? Minimum width for notification windows
 ---@field fps integer? Frames per second for animation stages, higher value means smoother animations but more CPU usage
 ---@field top_down boolean? whether or not to position the notifications at the top or not
 ---@field merge_duplicates boolean? whether to replace visible notification if new one is the same, can be an integer for min duplicate count
+---@field highlights table? override highlight groups
 
 local opacity_warned = false
 
@@ -124,7 +134,6 @@ Defaulting to #000000]], "warn", {
 end
 
 function Config._format_default()
-  vim.dbglog("FORMAT DEFAULT")
   return parser.config_formatter(default_config)
 end
 
@@ -184,6 +193,10 @@ function Config.setup(custom_config)
     return user_config.on_close
   end
 
+  function config.on_replace()
+    return user_config.on_replace
+  end
+
   function config.render()
     return user_config.render
   end
@@ -208,6 +221,10 @@ function Config.setup(custom_config)
 
   function config.captures()
     return user_config.captures
+  end
+
+  function config.highlights()
+    return user_config.highlights
   end
 
   local stages = config.stages()

@@ -1,6 +1,6 @@
 local stages_util = require("notify.stages.util")
 
-local opacity = 85
+local opacity = 100
 local freq = { 3, 3, 2.5, 2, 3 }
 -- local freq = { 5, 5, 2.5, 2, 3 }
 

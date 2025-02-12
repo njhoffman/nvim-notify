@@ -50,10 +50,25 @@ function NotifyBufHighlights:new(notif, buffer, config)
     end
   end
 
-  local title, title_def = linked_group("Title")
-  local border, border_def = linked_group("Border")
-  local body, body_def = linked_group("Body")
-  local icon, icon_def = linked_group("Icon")
+  local function set_linked_group(section, skip_prefix, skip_level)
+    local orig = (skip_prefix and "" or "Notify") .. (skip_level and "" or level) .. section
+    local new = orig .. buffer
+
+    if _G._NOTIFY_EXPERIMENTAL then
+      local hl = vim.api.nvim_get_hl(0, { name = orig, create = false, link = false })
+      -- Removes the unwanted 'default' key, as we will copy the table for updating the highlight later.
+      hl.default = nil
+      return new, hl
+    else
+      vim.api.nvim_set_hl(0, new, { link = orig })
+      return new, get_hl(new)
+    end
+  end
+
+  local title, title_def = set_linked_group("Title")
+  local border, border_def = set_linked_group("Border")
+  local body, body_def = set_linked_group("Body")
+  local icon, icon_def = set_linked_group("Icon")
 
   local groups = {
     [title] = title_def,
@@ -62,25 +77,25 @@ function NotifyBufHighlights:new(notif, buffer, config)
     [icon] = icon_def,
   }
 
-  -- local embedded_hls = vim.tbl_get(notif, "highlights", "body")
-  -- local level_hls = vim.tbl_get(notif, "highlights", "level")
+  local inline_hls = vim.tbl_get(notif, "highlights", "inline")
+  local level_hls = vim.tbl_get(notif, "highlights", "levels")
 
-  -- local content = {}
-  -- if embedded_hls then
-  --   -- predefined content highlights  { "Comment", 3, 9, 14 }
-  --   for _, hl_group in ipairs(embedded_hls) do
-  --     local _content, _content_def = linked_group(hl_group[1], true, true)
-  --     groups[_content] = _content_def
-  --     content[hl_group[1]] = _content
-  --   end
-  -- elseif level_hls then
-  --   -- special field for custom highlights for each level
-  --   for _, hl_group in ipairs(level_hls) do
-  --     local _content, _content_def = linked_group(hl_group[1], true, false)
-  --     groups[_content] = _content_def
-  --     content[hl_group[1]] = _content
-  --   end
-  -- end
+  local content = {}
+  if inline_hls then
+    -- predefined content highlights  { "Comment", 3, 9, 14 }
+    for _, hl_group in ipairs(inline_hls) do
+      local _content, _content_def = set_linked_group(hl_group[1], true, true)
+      groups[_content] = _content_def
+      content[hl_group[1]] = _content
+    end
+  elseif level_hls then
+    -- special field for custom highlights for each level
+    for _, hl_group in ipairs(level_hls) do
+      local _content, _content_def = set_linked_group(hl_group[1], true, false)
+      groups[_content] = _content_def
+      content[hl_group[1]] = _content
+    end
+  end
 
   local buf_highlights = {
     groups = groups,
@@ -89,12 +104,13 @@ function NotifyBufHighlights:new(notif, buffer, config)
     body = body,
     title = title,
     icon = icon,
-    -- content = content,
+    content = content,
     buffer = buffer,
     background_colour = config.background_colour(),
     _config = config,
   }
   self.__index = self
+
   setmetatable(buf_highlights, self)
   return buf_highlights
 end

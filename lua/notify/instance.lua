@@ -79,8 +79,7 @@ return function(user_config, inherit, global_config)
     end
   end
 
-  function instance.notify(...)
-    local message, level, opts = process_message(...)
+  function instance.notify(message, level, opts)
     opts = opts or {}
 
     if opts.replace then
