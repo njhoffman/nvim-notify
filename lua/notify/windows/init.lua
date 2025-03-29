@@ -63,11 +63,6 @@ function WindowAnimator:push_pending(queue)
       end
       win_opts.noautocmd = true
       local win = util.open_win(notif_buf, false, win_opts)
-      vim.fn.setwinvar(
-        win,
-        "&winhl",
-        "Normal:" .. notif_buf.highlights.body .. ",FloatBorder:" .. notif_buf.highlights.border
-      )
       self.win_stages[win] = 2
       self.win_states[win] = {}
       self.notif_bufs[win] = notif_buf

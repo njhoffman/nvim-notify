@@ -78,8 +78,7 @@ end
 function M.open_win(notif_buf, enter, opts)
   local win = vim.api.nvim_open_win(notif_buf:buffer(), enter, opts)
   -- vim.wo does not behave like setlocal, thus we use setwinvar to set local
-  -- only options. Otherwise our changes would affect subsequently opened
-  -- windows.
+  -- only options. Otherwise our changes would affect subsequently opened windows.
   -- see e.g. neovim#14595
   vim.fn.setwinvar(
     win,
