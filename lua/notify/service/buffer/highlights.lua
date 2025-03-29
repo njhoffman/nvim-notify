@@ -11,64 +11,27 @@ local util = require("notify.util")
 ---@field _config table
 local NotifyBufHighlights = {}
 
-local function manual_get_hl(name)
-  local synID = vim.fn.synIDtrans(vim.fn.hlID(name))
-  local result = {
-    foreground = tonumber(vim.fn.synIDattr(synID, "fg"):gsub("#", ""), 16),
-    background = tonumber(vim.fn.synIDattr(synID, "bg"):gsub("#", ""), 16),
-  }
-  return result
-end
-
-local function get_hl(name)
-  local definition = vim.api.nvim_get_hl_by_name(name, true)
-  if definition[true] then
-    -- https://github.com/neovim/neovim/issues/18024
-    return manual_get_hl(name)
-  end
-  return definition
-end
-
 function NotifyBufHighlights:new(notif, buffer, config)
   local level = notif.level or "INFO"
 
-  local function linked_group(section)
-    local orig = "Notify" .. level .. section
+  local function linked_group(section, skip_prefix, skip_level)
+    local orig = (skip_prefix and "" or "Notify") .. (skip_level and "" or level) .. section
     if vim.fn.hlID(orig) == 0 then
       orig = "NotifyINFO" .. section
     end
     local new = orig .. buffer
 
-    if _G._NOTIFY_EXPERIMENTAL then
-      local hl = vim.api.nvim_get_hl(0, { name = orig, create = false, link = false })
-      -- Removes the unwanted 'default' key, as we will copy the table for updating the highlight later.
-      hl.default = nil
-      return new, hl
-    else
-      vim.api.nvim_set_hl(0, new, { link = orig })
-      return new, get_hl(new)
-    end
+    vim.api.nvim_set_hl(0, new, { link = orig })
+    local hl = vim.api.nvim_get_hl(0, { name = orig, create = false, link = false })
+    -- Removes the unwanted 'default' key, as we will copy the table for updating the highlight later.
+    hl.default = nil
+    return new, hl
   end
 
-  local function set_linked_group(section, skip_prefix, skip_level)
-    local orig = (skip_prefix and "" or "Notify") .. (skip_level and "" or level) .. section
-    local new = orig .. buffer
-
-    if _G._NOTIFY_EXPERIMENTAL then
-      local hl = vim.api.nvim_get_hl(0, { name = orig, create = false, link = false })
-      -- Removes the unwanted 'default' key, as we will copy the table for updating the highlight later.
-      hl.default = nil
-      return new, hl
-    else
-      vim.api.nvim_set_hl(0, new, { link = orig })
-      return new, get_hl(new)
-    end
-  end
-
-  local title, title_def = set_linked_group("Title")
-  local border, border_def = set_linked_group("Border")
-  local body, body_def = set_linked_group("Body")
-  local icon, icon_def = set_linked_group("Icon")
+  local title, title_def = linked_group("Title")
+  local border, border_def = linked_group("Border")
+  local body, body_def = linked_group("Body")
+  local icon, icon_def = linked_group("Icon")
 
   local groups = {
     [title] = title_def,
@@ -84,14 +47,14 @@ function NotifyBufHighlights:new(notif, buffer, config)
   if inline_hls then
     -- predefined content highlights  { "Comment", 3, 9, 14 }
     for _, hl_group in ipairs(inline_hls) do
-      local _content, _content_def = set_linked_group(hl_group[1], true, true)
+      local _content, _content_def = linked_group(hl_group[1], true, true)
       groups[_content] = _content_def
       content[hl_group[1]] = _content
     end
   elseif level_hls then
     -- special field for custom highlights for each level
     for _, hl_group in ipairs(level_hls) do
-      local _content, _content_def = set_linked_group(hl_group[1], true, false)
+      local _content, _content_def = linked_group(hl_group[1], true, false)
       groups[_content] = _content_def
       content[hl_group[1]] = _content
     end
@@ -130,12 +93,7 @@ function NotifyBufHighlights:_redefine_treesitter()
       return new
     end
     vim.api.nvim_set_hl(0, new, { link = orig })
-
-    if _G._NOTIFY_EXPERIMENTAL then
-      self.groups[new] = vim.api.nvim_get_hl(0, { name = new, link = false })
-    else
-      self.groups[new] = get_hl(new)
-    end
+    self.groups[new] = vim.api.nvim_get_hl(0, { name = new, link = false })
     return new
   end
 
@@ -189,7 +147,7 @@ function NotifyBufHighlights:_redefine_treesitter()
             hl_group = custom_hl,
             -- TODO: Not sure how neovim's highlighter doesn't have issues with overriding highlights
             -- Three marks on same region always show the second for some reason AFAICT
-            priority = metadata.priority or i + 200,
+            priority = type(metadata.priority) == "number" or i + 200,
             conceal = metadata.conceal,
           })
         end
@@ -200,73 +158,32 @@ function NotifyBufHighlights:_redefine_treesitter()
 end
 
 function NotifyBufHighlights:set_opacity(alpha)
-  if _G._NOTIFY_EXPERIMENTAL then
-    if
-      not self._treesitter_redefined
-      and vim.api.nvim_get_option_value("filetype", { buf = self.buffer }) ~= "notify"
-    then
-      self:_redefine_treesitter()
+  if
+    not self._treesitter_redefined
+    and vim.api.nvim_get_option_value("filetype", { buf = self.buffer }) ~= "notify"
+  then
+    self:_redefine_treesitter()
+  end
+  self.opacity = alpha
+  local background = self._config.background_colour()
+  local updated = false
+  for group, fields in pairs(self.groups) do
+    local fg = fields.fg
+    if fg then
+      fg = util.blend(fg, background, alpha / 100)
     end
-    self.opacity = alpha
-    local background = self._config.background_colour()
-    local updated = false
-    for group, fields in pairs(self.groups) do
-      local fg = fields.fg
-      if fg then
-        fg = util.blend(fg, background, alpha / 100)
-      end
-      local bg = fields.bg
-      if bg then
-        bg = util.blend(bg, background, alpha / 100)
-      end
-
-      if fg ~= fields.fg or bg ~= fields.bg then
-        local hl = vim.tbl_extend("force", fields, { fg = fg, bg = bg })
-        vim.api.nvim_set_hl(0, group, hl)
-        updated = true
-      end
+    local bg = fields.bg
+    if bg then
+      bg = util.blend(bg, background, alpha / 100)
     end
-    return updated
-  else
-    if
-      not self._treesitter_redefined
-      and vim.api.nvim_buf_get_option(self.buffer, "filetype") ~= "notify"
-    then
-      self:_redefine_treesitter()
-    end
-    self.opacity = alpha
-    local background = self._config.background_colour()
-    for group, fields in pairs(self.groups) do
-      local updated_fields = {}
-      vim.api.nvim_set_hl(0, group, updated_fields)
-      local hl_string = ""
-      if fields.foreground then
-        hl_string = "guifg=#"
-          .. string.format("%06x", util.blend(fields.foreground, background, alpha / 100))
-      end
-      if fields.background then
-        hl_string = hl_string
-          .. " guibg=#"
-          .. string.format("%06x", util.blend(fields.background, background, alpha / 100))
-      end
 
-      if fields.special then
-        hl_string = hl_string
-          .. " guisp=#"
-          .. string.format("%06x", util.blend(fields.special, background, alpha / 100))
-      end
-      for _, style in ipairs({ "bold", "italic", "underline" }) do
-        if fields[style] then
-          hl_string = hl_string .. " gui=" .. style
-        end
-      end
-
-      if hl_string ~= "" then
-        -- Can't use nvim_set_hl https://github.com/neovim/neovim/issues/18160
-        vim.cmd("hi " .. group .. " " .. hl_string)
-      end
+    if fg ~= fields.fg or bg ~= fields.bg then
+      local hl = vim.tbl_extend("force", fields, { fg = fg, bg = bg })
+      vim.api.nvim_set_hl(0, group, hl)
+      updated = true
     end
   end
+  return updated
 end
 
 function NotifyBufHighlights:get_opacity()

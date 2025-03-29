@@ -96,12 +96,8 @@ local function validate_highlight(colour_or_group, needs_opacity)
     end
   end
   return function()
-    local group = vim.api.nvim_get_hl_by_name(colour_or_group, true)
-    local has_bg = group and group.background
-    if _G._NOTIFY_EXPERIMENTAL == true then
-      group = vim.api.nvim_get_hl(0, { name = colour_or_group, create = false, link = false })
-      has_bg = group and group.bg
-    end
+    local group = vim.api.nvim_get_hl(0, { name = colour_or_group, create = false, link = false })
+    local has_bg = group and group.bg
 
     if not has_bg then
       if needs_opacity and not opacity_warned then
@@ -126,10 +122,7 @@ Defaulting to #000000]], "warn", {
       end
       return "#000000"
     end
-    if _G._NOTIFY_EXPERIMENTAL then
-      return string.format("#%x", group.bg)
-    end
-    return string.format("#%x", group.background)
+    return string.format("#%x", group.bg)
   end
 end
 

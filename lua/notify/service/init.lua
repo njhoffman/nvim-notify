@@ -55,22 +55,10 @@ function NotificationService:push(notif)
   self._buffers[notif.id] = notif_buf
   self._pending:push(notif_buf)
 
-  if _G._NOTIFY_EXPERIMENTAL then
-    if not self._running then
-      self:_run()
-    end
-    return buf
-  else
-    if not self._running then
-      self:_run()
-    else
-      -- Forces a render during blocking events
-      -- https://github.com/rcarriga/nvim-notify/issues/5
-      pcall(self._animator.render, self._animator, self._pending, 1 / self._fps)
-    end
-    vim.cmd("redraw")
-    return buf
+  if not self._running then
+    self:_run()
   end
+  return buf
 end
 
 function NotificationService:replace(id, notif)

@@ -23,6 +23,7 @@ function notify.setup(user_config)
     require("telescope").load_extension("notify")
   end
   vim.cmd([[command! Notifications :lua require("notify")._print_history()<CR>]])
+  vim.cmd([[command! NotificationsClear :lua require("notify").clear_history()<CR>]])
 end
 
 function notify._config()
