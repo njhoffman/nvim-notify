@@ -62,12 +62,15 @@ function WindowAnimator:push_pending(queue)
         notif_buf.highlights:set_opacity(opacity)
       end
       win_opts.noautocmd = true
-      local win = util.open_win(notif_buf, false, win_opts)
-      self.win_stages[win] = 2
-      self.win_states[win] = {}
-      self.notif_bufs[win] = notif_buf
-      queue:pop()
-      notif_buf:open(win)
+
+      if notif_buf:is_valid() then
+        local win = util.open_win(notif_buf, false, win_opts)
+        self.win_stages[win] = 2
+        self.win_states[win] = {}
+        self.notif_bufs[win] = notif_buf
+        queue:pop()
+        notif_buf:open(win)
+      end
     end
   end
 end

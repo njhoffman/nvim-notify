@@ -78,6 +78,8 @@ local telescope_notifications = function(opts)
             col = (cols - opened_buffer.width) / 2,
             height = opened_buffer.height,
             width = opened_buffer.width,
+            winminwidth = 5,
+            winminheight = 1,
             border = "rounded",
             style = "minimal",
           })
