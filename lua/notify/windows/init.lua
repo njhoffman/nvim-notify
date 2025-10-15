@@ -65,6 +65,15 @@ function WindowAnimator:push_pending(queue)
 
       if notif_buf:is_valid() then
         local win = util.open_win(notif_buf, false, win_opts)
+        vim.fn.setwinvar(
+          win,
+          "&winhl",
+          "NormalNC:NONE"
+            .. ",Normal:"
+            .. notif_buf.highlights.body
+            .. ",FloatBorder:"
+            .. notif_buf.highlights.border
+        )
         self.win_stages[win] = 2
         self.win_states[win] = {}
         self.notif_bufs[win] = notif_buf
@@ -279,7 +288,11 @@ function WindowAnimator:_apply_win_state(win, win_state)
       vim.fn.setwinvar(
         win,
         "&winhl",
-        "Normal:" .. notif_buf.highlights.body .. ",FloatBorder:" .. notif_buf.highlights.border
+        "NormalNC:NONE"
+          .. ",Normal:"
+          .. notif_buf.highlights.body
+          .. ",FloatBorder:"
+          .. notif_buf.highlights.border
       )
     end
   end
@@ -315,9 +328,17 @@ function WindowAnimator:_apply_win_state(win, win_state)
       api.nvim_win_set_config(win, new_conf)
     end
   end
+
   -- The 'flush' key is set to enforce redrawing during blocking event.
   if vim.api.nvim_win_is_valid(win) then
-    pcall(vim.api.nvim__redraw, { win = win, valid = false, flush = true })
+    local redraw_ok, redraw_err = pcall(vim.api.nvim__redraw, {
+      win = win,
+      valid = false,
+      flush = true,
+    })
+    if not redraw_ok then
+      vim.dbglog("nvim-notify: Failed to redraw window " .. win .. ": ", redraw_err)
+    end
   end
   return hl_updated or win_updated
 end

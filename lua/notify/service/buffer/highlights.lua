@@ -62,7 +62,7 @@ function NotifyBufHighlights:new(notif, buffer, config)
 
   local buf_highlights = {
     groups = groups,
-    opacity = 100,
+    opacity = 0,
     border = border,
     body = body,
     title = title,

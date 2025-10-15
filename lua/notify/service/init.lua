@@ -68,7 +68,8 @@ function NotificationService:replace(id, notif)
       "No matching notification found to replace id: "
         .. vim.inspect(id)
         .. "\n"
-        .. vim.inspect(vim.tbl_keys(self._buffers))
+        .. vim.inspect(vim.tbl_keys(self._buffers)), 
+        0
     )
     return
   end
@@ -95,12 +96,17 @@ function NotificationService:replace(id, notif)
     vim.fn.setwinvar(
       win,
       "&winhl",
-      "Normal:" .. existing.highlights.body .. ",FloatBorder:" .. existing.highlights.border
+      "NormalNC:NONE"
+        .. ",Normal:"
+        .. existing.highlights.body
+        .. ",FloatBorder:"
+        .. existing.highlights.border
     )
 
+    vim.api.nvim_set_option_value('cursorcolumn', false, { win = win })
+    vim.api.nvim_set_option_value('cursorline', false, { win = win })
     -- vim.api.nvim_win_set_width(win, existing:width())
     -- vim.api.nvim_win_set_height(win, existing:height())
-
     self._animator:on_refresh(win)
   end
 end

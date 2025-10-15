@@ -11,7 +11,7 @@ return function(direction)
       return {
         relative = "editor",
         anchor = "NE",
-        width = 1,
+        width = state.message.width,
         height = state.message.height,
         col = vim.opt.columns:get(),
         row = next_row,
@@ -20,29 +20,31 @@ return function(direction)
         opacity = 100,
       }
     end,
-    function(state)
+    function(state, win)
       return {
-        width = { state.message.width, frequency = 2 },
-        col = { vim.opt.columns:get() },
-      }
-    end,
-    function()
-      return {
-        col = { vim.opt.columns:get() },
+        col = vim.opt.columns:get(),
         time = true,
+        row = stages_util.slot_after_previous(win, state.open_windows, direction),
       }
     end,
-    function()
+    function(state, win)
       return {
         width = {
           1,
           frequency = 2.5,
           damping = 0.9,
           complete = function(cur_width)
-            return cur_width < 2
+            return cur_width < 3
           end,
         },
         col = { vim.opt.columns:get() },
+        row = {
+          stages_util.slot_after_previous(win, state.open_windows, direction),
+          frequency = 3,
+          complete = function()
+            return true
+          end,
+        },
       }
     end,
   }

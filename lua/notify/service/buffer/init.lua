@@ -40,12 +40,15 @@ function NotificationBuf:set_notification(notif)
 end
 
 function NotificationBuf:_create_highlights()
-  local existing_opacity = self.highlights and self.highlights.opacity or 100
+  local existing_opacity = self.highlights
+      and type(self.highlights.opacity) == "number"
+      and self.highlights.opacity
+    or 100
   self.highlights = NotifyBufHighlights(self._notif, self._buffer, self._config)
-  dbg.logfmt.notification({ title = "create highlights", notif = self._notif })
   if existing_opacity < 100 then
     self.highlights:set_opacity(existing_opacity)
   end
+  dbg.log("buffer:_create_highlights: " .. existing_opacity, self.highlights)
 end
 
 function NotificationBuf:open(win)

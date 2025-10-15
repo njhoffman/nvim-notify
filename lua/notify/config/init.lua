@@ -14,6 +14,7 @@ local BUILTIN_RENDERERS = {
 local BUILTIN_STAGES = {
   FADE = "fade",
   SLIDE = "slide",
+  SLIDE = "slide_out",
   FADE_IN_SLIDE_OUT = "fade_in_slide_out",
   STATIC = "static",
 }
