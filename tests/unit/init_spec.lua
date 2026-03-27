@@ -187,4 +187,49 @@ describe("checking public interface", function()
     a.util.scheduler()
     assert(vim.api.nvim_win_is_valid(win))
   end)
+
+  describe("highlight cleanup", function()
+    a.it("clears dynamic highlight groups after notification closes", function()
+      notify.setup({ background_colour = "#000000", stages = "static" })
+
+      local notif = notify.async("test", "error", { timeout = 200 })
+      local win = notif.events.open()
+
+      -- Capture the buffer number used for dynamic highlight suffixes
+      a.util.scheduler()
+      local buf = vim.api.nvim_win_get_buf(win)
+
+      -- Verify dynamic highlights exist while notification is open
+      local hl_names = {
+        "NotifyERRORTitle" .. buf,
+        "NotifyERRORBorder" .. buf,
+        "NotifyERRORBody" .. buf,
+        "NotifyERRORIcon" .. buf,
+      }
+      for _, name in ipairs(hl_names) do
+        local hl = vim.api.nvim_get_hl(0, { name = name, link = false })
+        assert.is.Not.same(
+          vim.empty_dict(),
+          hl,
+          "Expected highlight " .. name .. " to exist while notification is open"
+        )
+      end
+
+      -- Wait for notification to close
+      notif.events.close()
+      -- close() cleanup is scheduled, give it time to run
+      a.util.sleep(100)
+      a.util.scheduler()
+
+      -- Verify dynamic highlights are cleared after close
+      for _, name in ipairs(hl_names) do
+        local hl = vim.api.nvim_get_hl(0, { name = name, link = false })
+        assert.are.same(
+          vim.empty_dict(),
+          hl,
+          "Expected highlight " .. name .. " to be cleared after notification closed"
+        )
+      end
+    end)
+  end)
 end)

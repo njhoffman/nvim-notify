@@ -190,6 +190,13 @@ function NotifyBufHighlights:get_opacity()
   return self.opacity
 end
 
+function NotifyBufHighlights:clear()
+  for group, _ in pairs(self.groups) do
+    vim.api.nvim_set_hl(0, group, {})
+  end
+  self.groups = {}
+end
+
 ---@return NotifyBufHighlights
 return function(level, buffer, config)
   return NotifyBufHighlights:new(level, buffer, config)

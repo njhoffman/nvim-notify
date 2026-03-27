@@ -44,6 +44,9 @@ function NotificationBuf:_create_highlights()
       and type(self.highlights.opacity) == "number"
       and self.highlights.opacity
     or 100
+  if self.highlights and self.highlights.clear then
+    self.highlights:clear()
+  end
   self.highlights = NotifyBufHighlights(self._notif, self._buffer, self._config)
   if existing_opacity < 100 then
     self.highlights:set_opacity(existing_opacity)
@@ -91,6 +94,9 @@ function NotificationBuf:close(win)
     end
     if self._config.on_close() then
       self._config.on_close()(win)
+    end
+    if self.highlights then
+      self.highlights:clear()
     end
     pcall(api.nvim_buf_delete, self._buffer, { force = true })
   end)
