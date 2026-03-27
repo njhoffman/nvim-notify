@@ -1,0 +1,20 @@
+{
+  "name": "nvim-notify",
+  "version": "3.17.0",
+  "description": "A fancy, configurable, notification manager for NeoVim",
+  "main": "lua/notify/init.lua",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/njhoffman/nvim-notify.git"
+  },
+  "keywords": [
+    "neovim",
+    "nvim",
+    "notifications",
+    "lua",
+    "plugin"
+  ],
+  "author": "Nicholas Hoffman",
+  "license": "MIT",
+  "private": true
+}

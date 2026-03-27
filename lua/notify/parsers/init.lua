@@ -1,5 +1,6 @@
 local parse_highlights = require("notify.parsers.highlights")
 local capture = require("notify.parsers.capture")
+local compat = require("notify.compat")
 
 -- handles tables in notification message that either contain body highlights or objects to inspect
 -- returns plain string and table of lines each containing arrays of { Content, HLName? }
@@ -16,7 +17,7 @@ end
 -- extract embedded objects or highlights, return parsed options and clean string
 local default_formatter = function(msg, level, opts)
   if type(msg) == "table" then
-    if vim.islist(msg) then
+    if compat.islist(msg) then
       return vim.fn.join(msg, "\n"), level, opts
     else
       return vim.inspect(msg), level, opts
@@ -32,7 +33,8 @@ end
 local parse_message = function(message, level, opts)
   opts = opts or {}
   if type(message) == "table" then
-    return parse_highlights(message, level, opts)
+    local msg, parsed_opts = parse_highlights(message, opts)
+    return msg, level, parsed_opts
   end
 
   return parse_captures(message, level, opts)

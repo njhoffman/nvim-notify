@@ -18,6 +18,8 @@
 ---@field duplicates? integer[] shared list of duplicate notifications by id
 ---@field highlights? table?
 
+local compat = require("notify.compat")
+
 local Notification = {}
 
 -- local hl_config = {
@@ -58,9 +60,9 @@ function Notification:new(id, message, level, opts, config)
     --   and #message > 1
   end
 
-  vim.validate('message', message, "table")
-  vim.validate('level', level, "string")
-  vim.validate('title', title, "table")
+  compat.validate("message", message, "table")
+  compat.validate("level", level, "string")
+  compat.validate("title", title, "table")
 
   local notif = {
     id = id,

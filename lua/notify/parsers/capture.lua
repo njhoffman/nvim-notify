@@ -3,10 +3,10 @@ local default_captures = {
   ["|(%S-)|"] = { "vim_link", cmd = vim.cmd.help },
   ["%[.-%]%((file:%S-)%)"] = {
     "file_loc",
-    cmd = require("noice.util").openHoverFile,
+    -- cmd = require("noice.util").openHoverFile,
     priority = 10,
   },
-  ["%[.-%]%((%S-)%)"] = { "md_link", cmd = require("noice.util").open },
+  -- ["%[.-%]%((%S-)%)"] = { "md_link", cmd = require("noice.util").open },
 }
 
 local process_captures = function() end

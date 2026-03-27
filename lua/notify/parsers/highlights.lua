@@ -1,3 +1,5 @@
+local compat = require("notify.compat")
+
 -- handles tables in notification message that either contain body highlights or objects to inspect
 -- returns plain string and table of lines each containing arrays of { Content, HLName? }
 
@@ -30,7 +32,7 @@ local parse_message = function(orig_msg, orig_opts)
   local new_msg = orig_msg or ""
   local highlights = {}
   if type(new_msg) == "table" then
-    if vim.islist(orig_msg) then
+    if compat.islist(orig_msg) then
       if type(orig_msg[1]) == "string" then
         new_msg = vim.fn.join(orig_msg, "\n")
       elseif has_embedded_hls(orig_msg) then

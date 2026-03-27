@@ -14,7 +14,7 @@ local BUILTIN_RENDERERS = {
 local BUILTIN_STAGES = {
   FADE = "fade",
   SLIDE = "slide",
-  SLIDE = "slide_out",
+  SLIDE_OUT = "slide_out",
   FADE_IN_SLIDE_OUT = "fade_in_slide_out",
   STATIC = "static",
 }
@@ -128,7 +128,7 @@ Defaulting to #000000]], "warn", {
 end
 
 function Config._format_default()
-  return parser.config_formatter(default_config)
+  return parsers.config_formatter(default_config)
 end
 
 function Config.setup(custom_config)

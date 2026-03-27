@@ -219,44 +219,6 @@ return function(user_config, inherit, global_config)
     return service and service:pending() or {}
   end
 
-  function instance.clear_dupes(opts)
-    opts = opts or { sequential = true, use_ids = true }
-    local state = { ids = {}, hashes = {}, skipped = 0, last_id = nil, last_hash = n }
-
-    notifications = vim.tbl_filter(function(notif)
-      local msg_hash = vim.fn.string_hash(notif.message)
-      local skip = false
-      if opts.sequential then
-        if opts.use_ids and state.last_id == notif.id then
-          skip = true
-        elseif state.last_hash == msg_hash then
-          skip = true
-        elseif state.last_hash == msg_hash then
-          skip = true
-        end
-      end
-
-      if
-        opts.use_ids and vim.list_contains(state.ids, notif.id)
-        or vim.list_contains(state.hashes, msg_hash)
-      then
-        skip = true
-      end
-
-      state.last_hash = msg_hash
-      state.last_id = notif.id
-
-      if skip == true then
-        state.skipped = state.skipped + 1
-        return false
-      end
-
-      table.insert(state.ids, notif.id)
-      table.insert(state.hashes, msg_hash)
-      return true
-    end, notifications)
-  end
-
   function instance.clear_history()
     notifications = {}
   end

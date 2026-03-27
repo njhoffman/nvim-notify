@@ -4,10 +4,10 @@ on:
 jobs:
   style:
     name: style
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v2
-      - uses: JohnnyMorganz/stylua-action@v1
+      - uses: actions/checkout@v4
+      - uses: JohnnyMorganz/stylua-action@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: latest
@@ -15,27 +15,32 @@ jobs:
 
   tests:
     name: tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-20.04
-            url: https://github.com/neovim/neovim/releases/download/v0.5.1/nvim-linux64.tar.gz
+        nvim_version:
+          - v0.9.5
+          - v0.10.2
+          - nightly
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - run: date +%F > todays-date
-      - name: Restore cache for today's nightly.
-        uses: actions/cache@v2
+      - name: Restore cache for today's nightly
+        uses: actions/cache@v4
         with:
           path: _neovim
-          key: ${{ runner.os }}-x64-${{ hashFiles('todays-date') }}
+          key: ${{ runner.os }}-${{ matrix.nvim_version }}-${{ hashFiles('todays-date') }}
 
       - name: Prepare dependencies
         run: |
           test -d _neovim || {
             mkdir -p _neovim
-            curl -sL ${{ matrix.url }} | tar xzf - --strip-components=1 -C "${PWD}/_neovim"
+            if [ "${{ matrix.nvim_version }}" = "nightly" ]; then
+              curl -sL https://github.com/neovim/neovim/releases/download/nightly/nvim-linux64.tar.gz | tar xzf - --strip-components=1 -C "${PWD}/_neovim"
+            else
+              curl -sL https://github.com/neovim/neovim/releases/download/${{ matrix.nvim_version }}/nvim-linux64.tar.gz | tar xzf - --strip-components=1 -C "${PWD}/_neovim"
+            fi
           }
           mkdir -p ~/.local/share/nvim/site/pack/vendor/start
           git clone --depth 1 https://github.com/nvim-lua/plenary.nvim ~/.local/share/nvim/site/pack/vendor/start/plenary.nvim
@@ -51,19 +56,19 @@ jobs:
   release:
     name: release
     if: ${{ github.ref == 'refs/heads/master' }}
-    needs: 
+    needs:
       - style
       - tests
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Setup Node.js
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

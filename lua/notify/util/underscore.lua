@@ -41,6 +41,10 @@ function _.isFunction(value)
   return type(value) == "function"
 end
 
+function _.isObject(value)
+  return type(value) == "table"
+end
+
 function _.isEmpty(value)
   if not value then
     return true

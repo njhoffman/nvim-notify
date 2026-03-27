@@ -1,7 +1,9 @@
 local M = {}
 
 local min, max, floor = math.min, math.max, math.floor
-local rshift, lshift, band, bor = bit.rshift, bit.lshift, bit.band, bit.bor
+-- Use bit32 for Lua 5.2+ or bit for LuaJIT
+local bit_lib = bit32 or bit
+local rshift, lshift, band, bor = bit_lib.rshift, bit_lib.lshift, bit_lib.band, bit_lib.bor
 
 function M.is_callable(obj)
   return type(obj) == "function" or (type(obj) == "table" and obj.__call)
@@ -121,7 +123,7 @@ function M.highlight(name, fields)
   end
 end
 
-local strwidth = vim.str_utfindex or vim.api.nvim_strwidth or vim.fn.strchars
+local strwidth = vim.api.nvim_strwidth
 
 --- Calculate the max render width of a message
 ---@param msg string[]|nil

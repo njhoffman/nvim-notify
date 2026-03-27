@@ -1,4 +1,5 @@
 local _ = require("notify.util.underscore")
+local compat = require("notify.compat")
 
 local debug = {
   flag = false,
@@ -16,14 +17,14 @@ logfmt.notification = function(props)
   if not debug.flag then
     return
   end
-  vim.dbglog(props.title or "", _.omit(props.notif, { "on_close", "on_open", "render", "keep" }))
+  compat.dbglog(props.title or "", _.omit(props.notif, { "on_close", "on_open", "render", "keep" }))
 end
 
 logfmt.highlights = function(props)
   if not debug.flag then
     return
   end
-  vim.dbglog(props.title or "", _.omit(props.buf_highlights, { "_config" }))
+  compat.dbglog(props.title or "", _.omit(props.buf_highlights, { "_config" }))
 end
 
 logfmt.extmarks = function(props)
@@ -48,7 +49,7 @@ logfmt.extmarks = function(props)
       .. " "
       .. extmark[4].hl_group
   end
-  vim.dbglog(props.title or "", extmarks_out)
+  compat.dbglog(props.title or "", extmarks_out)
 end
 
 debug.logfmt = logfmt
@@ -62,7 +63,7 @@ debug.log = function(...)
       end
       table.insert(data, v)
     end
-    vim.dbglog(table.concat(data, " "))
+    compat.dbglog(table.concat(data, " "))
   end
 end
 

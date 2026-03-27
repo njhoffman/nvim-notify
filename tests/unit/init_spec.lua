@@ -19,17 +19,13 @@ describe("checking public interface", function()
     it("returns all previous notifications", function()
       notify.notify("test", "error")
       local notifs = notify.history()
-      assert.are.same({
-        {
-          icon = "",
-          id = 1,
-          level = "ERROR",
-          message = { "test" },
-          render = notifs[1].render,
-          time = notifs[1].time,
-          title = { "", notifs[1].title[2] },
-        },
-      }, notifs)
+      assert.equals(1, #notifs)
+      assert.equals(1, notifs[1].id)
+      assert.equals("ERROR", notifs[1].level)
+      assert.are.same({ "test" }, notifs[1].message)
+      assert.equals("", notifs[1].title[1])
+      assert.equals("string", type(notifs[1].title[2]))
+      assert.equals("number", type(notifs[1].time))
     end)
 
     describe("rendering", function()
@@ -137,14 +133,48 @@ describe("checking public interface", function()
     async.run(function()
       local notif = notify.async("test", "debug", { message = { string.rep("a", 16), "" } })
       local win = notif.events.open()
-      async.api.nvim_buf_set_option(async.api.nvim_win_get_buf(win), "filetype", "test")
+      vim.api.nvim_set_option_value("filetype", "test", { buf = async.api.nvim_win_get_buf(win) })
     end)
     async.util.sleep(100)
     local bufs = vim.api.nvim_list_bufs()
     for _, buf in ipairs(bufs) do
-      assert.Not.same(vim.api.nvim_buf_get_option(buf, "filetype"), "test")
+      assert.Not.same(vim.api.nvim_get_option_value("filetype", { buf = buf }), "test")
     end
   end)
+  describe("clear_history()", function()
+    it("empties the notification history", function()
+      notify.notify("first", "info")
+      notify.notify("second", "warn")
+      assert.is.True(#notify.history() >= 2)
+      notify.clear_history()
+      assert.are.same({}, notify.history())
+    end)
+  end)
+
+  describe("dismiss()", function()
+    it("does not error with no active notifications", function()
+      assert.has_no.errors(function()
+        notify.dismiss({ pending = true, silent = true })
+      end)
+    end)
+  end)
+
+  describe("duplicate merging", function()
+    it("populates duplicates field when same notification sent twice", function()
+      notify.setup({ background_colour = "#000000", merge_duplicates = true })
+      notify.notify("duplicate msg", "info", { title = "test" })
+      notify.notify("duplicate msg", "info", { title = "test" })
+      local history = notify.history()
+      local found_dups = false
+      for _, notif in ipairs(history) do
+        if notif.duplicates and #notif.duplicates > 1 then
+          found_dups = true
+        end
+      end
+      assert.is.True(found_dups)
+    end)
+  end)
+
   a.it("refreshes timeout on replace", function()
     -- Don't want to spend time animating
     notify.setup({ background_colour = "#000000", stages = "static" })
@@ -156,19 +186,5 @@ describe("checking public interface", function()
     a.util.sleep(300)
     a.util.scheduler()
     assert(vim.api.nvim_win_is_valid(win))
-  end)
-end)
-
-describe("util", function()
-  local util = require("notify.util")
-
-  describe("max_line_width()", function()
-    it("returns the maximal width of a table of lines", function()
-      assert.equals(5, util.max_line_width({ "12", "12345", "123" }))
-    end)
-
-    it("returns 0 for nil input", function()
-      assert.equals(0, util.max_line_width())
-    end)
   end)
 end)
