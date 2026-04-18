@@ -1,13 +1,8 @@
 local base = require("notify.render.base")
 
 return function(bufnr, notif, highlights)
-  local namespace = base.namespace()
   local icon = notif.icon
-  local title = notif.title[1]
-
-  if type(title) == "string" and notif.duplicates then
-    title = string.format("%s x%d", title, #notif.duplicates)
-  end
+  local title = base.apply_duplicates(notif.title[1], notif, "%s x%d")
 
   local prefix
   if type(title) == "string" and #title > 0 then
@@ -25,19 +20,16 @@ return function(bufnr, notif, highlights)
   local icon_length = string.len(icon)
   local prefix_length = string.len(prefix)
 
-  vim.api.nvim_buf_set_extmark(bufnr, namespace, 0, 0, {
+  base.set_extmark(bufnr, 0, 0, {
     hl_group = highlights.icon,
     end_col = icon_length + 1,
     priority = 50,
   })
-  vim.api.nvim_buf_set_extmark(bufnr, namespace, 0, icon_length + 1, {
+  base.set_extmark(bufnr, 0, icon_length + 1, {
     hl_group = highlights.title,
     end_col = prefix_length + 1,
     priority = 50,
   })
-  vim.api.nvim_buf_set_extmark(bufnr, namespace, 0, prefix_length + 1, {
-    hl_group = highlights.body,
-    end_line = #message,
-    priority = 50,
-  })
+  base.highlight_body(bufnr, highlights, notif, 0, prefix_length + 1, #message)
+  base.highlight_inline(bufnr, highlights, notif, 0, prefix_length + 1)
 end

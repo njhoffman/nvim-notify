@@ -17,7 +17,4 @@ else
   end
 end
 
--- vim.dbglog is non-standard; provide a safe no-op fallback.
-M.dbglog = vim.dbglog or function() end
-
 return M

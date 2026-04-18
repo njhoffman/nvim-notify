@@ -114,6 +114,7 @@ return function(user_config, inherit, global_config)
         end
       end
     end
+    message, level, opts = parsers.parse_message(message, level, opts, instance_config)
     opts.render = get_render(opts.render or instance_config.render())
     local id = #notifications + 1
     local notification = Notification(id, message, level, opts, instance_config)

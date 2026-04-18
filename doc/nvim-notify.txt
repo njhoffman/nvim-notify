@@ -279,6 +279,11 @@ Built-in renderers:
 - `"default"`
 - `"minimal"`
 - `"simple"`
+- `"compact"`
+- `"wrapped-default"`
+- `"wrapped-compact"`
+- `"wrapped-minimal"`
+- `"auto"` — pick a renderer at notify-time from a rule-based ruleset
 
 Custom functions should accept a buffer, a notification record and a highlights
 table
@@ -289,6 +294,37 @@ table
 You should use the provided highlight groups to take advantage of opacity
 changes as they will be updated as the notification is animated
 
+Auto renderer and rulesets ~
+
+Set `render = "auto"` to let nvim-notify pick a renderer per notification by
+walking a list of rules. Each rule is a table
+`{ when = fn(notif, config) -> bool, pick = <renderer name> }`; a rule with
+no `when` always matches. First match wins.
+
+Two built-in rulesets ship:
+- `"default"` — minimal / wrapped-minimal / wrapped-default / default,
+  depending on whether the notification has a title and whether its body
+  fits within `config.max_width`.
+- `"compact"` — compact / wrapped-compact.
+
+Selection precedence:
+1. `config.render_ruleset = "<name>"` (explicit, overrides everything)
+2. `config.compact = true` → `"compact"`
+3. otherwise → `"default"`
+
+Register or extend rulesets:
+>lua
+    local base = require("notify.render.base")
+    base.register_ruleset("mine", {
+      { when = function(n) return n.level == "ERROR" end, pick = "simple" },
+      { pick = "default" },
+    })
+    base.add_rule("default", {
+      when = function(n) return n.icon == "!" end,
+      pick = "simple",
+    })
+<
+
 notify.Highlights                                          *notify.Highlights*
 
 
@@ -298,6 +334,117 @@ notify.Highlights                                          *notify.Highlights*
         {border} (string)
         {body}   (string)
 
+
+
+================================================================================
+PARSERS                                                       *notify.parsers*
+
+The parsers pipeline runs between the `vim.notify(msg, level, opts)` call
+site and notification creation. It has two phases:
+
+- **Decorator** — if a decorator's `trigger(opts)` returns true, it produces
+  the displayed text plus (optionally) inline highlights and captures. Only
+  one decorator runs per notification; the first match wins. Decorators
+  exist so callers can submit structured data via `opts.payload = { kind,
+  data }` without breaking the `vim.notify` signature.
+- **Matcher** — after any decorator has run, matchers are tried against the
+  final `msg`. On a hit, the matcher writes `opts.captures` and may
+  contribute inline highlights. First match wins.
+
+`opts.captures` is carried through onto the notification record and is
+visible to rule-based renderer dispatch (see `:h notify-render`) and to
+custom renderers via `notif.captures`.
+
+Bypass the whole pipeline with `opts.parser = false`.
+
+Built-in decorator: ~
+`lines` — takes `opts.payload = { kind = "lines", data = <rows> }` where
+each row is either a plain string or a list of segments. Each segment is
+either a plain string or a `{ text, hl_group }` tuple. Produces the
+flattened text and inline highlights pointing at segments that carried a
+group.
+
+Example: ~
+>lua
+    vim.notify("", "info", {
+      payload = {
+        kind = "lines",
+        data = {
+          { { "hello ", "Keyword" }, "world" },
+          { { "line two", "String" } },
+        },
+      },
+    })
+<
+
+Register your own: ~
+>lua
+    local parsers = require("notify.parsers")
+
+    parsers.register_decorator("list", {
+      trigger = function(opts) return opts.payload and opts.payload.kind == "list" end,
+      format = function(opts)
+        local text, inline = require("my.aligner").align(opts.payload.data)
+        return {
+          msg = text,
+          highlights = { inline = inline },
+          captures = { layout = "list" },
+        }
+      end,
+    })
+
+    parsers.register_matcher("error", {
+      match = function(msg)
+        local file, line = msg:match("^Error at ([^:]+):(%d+)")
+        if file then return { isError = true, file = file, line = tonumber(line) } end
+      end,
+    })
+<
+
+Registration API: ~
+- `parsers.register_decorator(name, spec)`
+- `parsers.unregister_decorator(name)`
+- `parsers.register_matcher(name, spec)`
+- `parsers.unregister_matcher(name)`
+- `parsers.list_decorators()` / `parsers.list_matchers()`
+- `parsers.get_decorator(name)` / `parsers.get_matcher(name)`
+
+
+================================================================================
+DEMO                                                             *notify.demo*
+
+Interactive demo for nvim-notify.
+
+Invoke via |:NotificationsDemo|. The first invocation opens a scratch buffer
+pre-filled with the default options. Edit the buffer and press `<CR>` (normal
+mode) to launch the demo with those options, or `q` to dismiss without
+running.
+
+The buffer must evaluate to a table of the form:
+>lua
+    return {
+      opts = {
+        delay = 200,
+        notify_timeout = 3000,
+        group_timeout = 4000,
+        levels = { "trace", "debug", "info", "warn", "error" },
+        stages = "fade_in_slide_out",
+        renders = { "minimal", "simple", "compact", "default",
+                    "wrapped-minimal", "wrapped-compact", "wrapped-default" },
+      },
+      variants = require("notify.demo.variants"),
+    }
+<
+
+                                                          *:NotificationsDemo*
+:NotificationsDemo
+    Open the demo options scratch buffer. Press `<CR>` to run, `q` to
+    dismiss. Equivalent to `:lua require("notify.demo").setup()`.
+
+                                                      *:NotificationsDemoStop*
+:NotificationsDemoStop
+    Stop an in-progress demo. Equivalent to
+    `:lua require("notify.demo").stop()`.
 
 
  vim:tw=78:ts=8:ft=help:norl:

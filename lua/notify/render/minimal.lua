@@ -9,13 +9,13 @@ return function(bufnr, notif, highlights)
       unpack(notif.message, 2),
     }
   end
-  local namespace = base.namespace()
   api.nvim_buf_set_lines(bufnr, 0, -1, false, message)
 
-  api.nvim_buf_set_extmark(bufnr, namespace, 0, 0, {
+  base.set_extmark(bufnr, 0, 0, {
     hl_group = highlights.icon,
     end_line = #message - 1,
     end_col = #message[#message],
     priority = 50,
   })
+  base.highlight_inline(bufnr, highlights, notif, 0, 0)
 end

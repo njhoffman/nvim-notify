@@ -1,6 +1,6 @@
 {
   "name": "nvim-notify",
-  "version": "3.17.1",
+  "version": "3.18.0",
   "description": "A fancy, configurable, notification manager for NeoVim",
   "main": "lua/notify/init.lua",
   "repository": {

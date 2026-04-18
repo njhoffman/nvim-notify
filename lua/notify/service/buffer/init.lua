@@ -1,6 +1,6 @@
 local api = vim.api
 
-local dbg = require("notify.util.debug")
+local log = require("notify.util.log")
 local NotifyBufHighlights = require("notify.service.buffer.highlights")
 
 ---@class NotificationBuf
@@ -51,7 +51,7 @@ function NotificationBuf:_create_highlights()
   if existing_opacity < 100 then
     self.highlights:set_opacity(existing_opacity)
   end
-  dbg.log("buffer:_create_highlights: " .. existing_opacity, self.highlights)
+  log.debug("buffer:_create_highlights: " .. existing_opacity, self.highlights)
 end
 
 function NotificationBuf:open(win)

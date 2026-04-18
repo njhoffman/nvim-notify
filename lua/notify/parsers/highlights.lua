@@ -37,8 +37,9 @@ local parse_message = function(orig_msg, orig_opts)
         new_msg = vim.fn.join(orig_msg, "\n")
       elseif has_embedded_hls(orig_msg) then
         new_msg, highlights = gen_highlights(orig_msg)
-        new_opts.highlights =
-          vim.tbl_deep_extend("force", new_opts.highlights or {}, { body = highlights })
+        new_opts.highlights = new_opts.highlights or {}
+        new_opts.highlights.inline = new_opts.highlights.inline or {}
+        vim.list_extend(new_opts.highlights.inline, highlights)
       else
         new_opts.filetype = orig_opts.filetype or ""
         new_msg = vim.inspect(orig_msg)

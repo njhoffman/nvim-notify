@@ -7,6 +7,7 @@ docs.test = function()
     "./lua/notify/init.lua",
     "./lua/notify/config/init.lua",
     "./lua/notify/render/init.lua",
+    "./lua/notify/demo/init.lua",
   }
 
   -- Output file

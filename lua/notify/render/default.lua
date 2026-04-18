@@ -6,11 +6,7 @@ return function(bufnr, notif, highlights, config)
   local left_icon = notif.icon == "" and "" or notif.icon .. " "
   local max_message_width = util.max_line_width(notif.message)
   local right_title = notif.title[2]
-  local left_title = notif.title[1]
-
-  if notif.duplicates then
-    left_title = string.format("%s (x%d)", left_title, #notif.duplicates)
-  end
+  local left_title = base.apply_duplicates(notif.title[1], notif)
 
   local title_accum = vim.str_utfindex(left_icon)
     + vim.str_utfindex(right_title)
@@ -18,9 +14,8 @@ return function(bufnr, notif, highlights, config)
 
   local left_buffer = string.rep(" ", math.max(0, max_message_width - title_accum))
 
-  local namespace = base.namespace()
   api.nvim_buf_set_lines(bufnr, 0, 1, false, { "", "" })
-  api.nvim_buf_set_extmark(bufnr, namespace, 0, 0, {
+  base.set_extmark(bufnr, 0, 0, {
     virt_text = {
       { " " },
       { left_icon, highlights.icon },
@@ -29,12 +24,12 @@ return function(bufnr, notif, highlights, config)
     virt_text_win_col = 0,
     priority = 10,
   })
-  api.nvim_buf_set_extmark(bufnr, namespace, 0, 0, {
+  base.set_extmark(bufnr, 0, 0, {
     virt_text = { { " " }, { right_title, highlights.title }, { " " } },
     virt_text_pos = "right_align",
     priority = 10,
   })
-  api.nvim_buf_set_extmark(bufnr, namespace, 1, 0, {
+  base.set_extmark(bufnr, 1, 0, {
     virt_text = {
       {
         string.rep(
@@ -51,10 +46,6 @@ return function(bufnr, notif, highlights, config)
   local message = notif.message
   api.nvim_buf_set_lines(bufnr, 2, -1, false, message)
 
-  api.nvim_buf_set_extmark(bufnr, namespace, 2, 0, {
-    hl_group = highlights.body,
-    end_line = 1 + #message,
-    end_col = #message[#message],
-    priority = 50, -- Allow treesitter to override
-  })
+  base.highlight_body(bufnr, highlights, notif, 2, 0, 1 + #message, #message[#message])
+  base.highlight_inline(bufnr, highlights, notif, 2, 0)
 end

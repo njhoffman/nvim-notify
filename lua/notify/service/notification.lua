@@ -17,6 +17,7 @@
 ---@field render fun(buf: integer, notification: notify.Notification, highlights: table<string, string>)
 ---@field duplicates? integer[] shared list of duplicate notifications by id
 ---@field highlights? table?
+---@field captures? table? tags set by parser decorators/matchers
 
 local compat = require("notify.compat")
 
@@ -81,6 +82,7 @@ function Notification:new(id, message, level, opts, config)
     render = opts.render,
     hide_from_history = opts.hide_from_history,
     highlights = opts.highlights,
+    captures = opts.captures,
     duplicates = opts.duplicates,
   }
 
@@ -101,6 +103,7 @@ function Notification:record()
     duplicates = self.duplicates,
     filetype = self.filetype,
     highlights = self.highlights,
+    captures = self.captures,
   }
 end
 

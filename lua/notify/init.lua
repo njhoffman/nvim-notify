@@ -24,6 +24,7 @@ function notify.setup(user_config)
   end
   vim.cmd([[command! Notifications :lua require("notify")._print_history()<CR>]])
   vim.cmd([[command! NotificationsClear :lua require("notify").clear_history()<CR>]])
+  require("notify.demo").register_commands()
 end
 
 function notify._config()
@@ -193,6 +194,19 @@ end
 ---@param inherit? boolean Inherit the global configuration, default true
 function notify.instance(user_config, inherit)
   return instance(user_config, inherit, global_config)
+end
+
+--- Open the interactive demo configuration buffer.
+---
+--- Invoked by the `:NotificationsDemo` command. Opens a scratch buffer
+--- pre-filled with the default demo options. Edit the buffer then press
+--- `<CR>` to launch the demo, or `q` to dismiss.
+---
+--- Use `:NotificationsDemoStop` to cancel a running demo.
+---    See: ~
+---        |notify.demo|
+function notify.setup_demo()
+  require("notify.demo").setup()
 end
 
 setmetatable(notify, {

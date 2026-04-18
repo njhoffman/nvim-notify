@@ -1,7 +1,7 @@
 local api = vim.api
 local animate = require("notify.animate")
 local util = require("notify.util")
-local compat = require("notify.compat")
+local log = require("notify.util.log")
 local round = util.round
 local max = math.max
 
@@ -338,7 +338,7 @@ function WindowAnimator:_apply_win_state(win, win_state)
       flush = true,
     })
     if not redraw_ok then
-      compat.dbglog("nvim-notify: Failed to redraw window " .. win .. ": ", redraw_err)
+      log.error("nvim-notify: Failed to redraw window " .. win .. ": ", redraw_err)
     end
   end
   return hl_updated or win_updated

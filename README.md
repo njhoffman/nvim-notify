@@ -179,6 +179,104 @@ You can clear the notifications with the clear history function
 require("notify").clear_history()
 ```
 
+### Automatic renderer selection
+
+Pass `render = "auto"` to let nvim-notify pick a renderer per notification:
+
+```lua
+require("notify").setup({ render = "auto" })
+```
+
+Dispatch walks a rule list (first match wins). By default: no-title single-line
+messages use `minimal`, no-title multi-line messages use `wrapped-minimal`,
+titled messages use `default` or `wrapped-default` depending on wrapping.
+
+Pick the compact variants instead with:
+
+```lua
+require("notify").setup({ render = "auto", compact = true })
+```
+
+Register your own ruleset:
+
+```lua
+local base = require("notify.render.base")
+base.register_ruleset("mine", {
+  { when = function(notif) return notif.level == "ERROR" end, pick = "simple" },
+  { pick = "default" },
+})
+require("notify").setup({ render = "auto", render_ruleset = "mine" })
+```
+
+Or extend an existing ruleset (`add_rule` prepends so custom rules win):
+
+```lua
+base.add_rule("default", {
+  when = function(notif) return notif.icon == "!" end,
+  pick = "simple",
+})
+```
+
+See `:h notify-render` for details.
+
+### Structured messages and capture-based dispatch
+
+nvim-notify keeps `vim.notify(msg, level, opts)` as the only entry point.
+Structured data rides on `opts.payload`, which the parser registry can
+translate into text and inline highlights. Pattern matchers can also tag a
+message with `opts.captures`, which renderer dispatch rules then read.
+
+The built-in `lines` decorator turns a nested-table payload into text +
+highlights:
+
+```lua
+vim.notify("", "info", {
+  payload = {
+    kind = "lines",
+    data = {
+      { { "hello ", "Keyword" }, "world" },
+      { { "line two", "String" } },
+    },
+  },
+})
+```
+
+Register your own decorators/matchers:
+
+```lua
+local parsers = require("notify.parsers")
+
+parsers.register_matcher("error", {
+  match = function(msg)
+    local file, line = msg:match("^Error at ([^:]+):(%d+)")
+    if file then return { isError = true, file = file, line = tonumber(line) } end
+  end,
+})
+
+require("notify.render.base").add_rule("default", {
+  when = function(notif) return notif.captures and notif.captures.isError end,
+  pick = "simple",
+})
+```
+
+Bypass the pipeline for a single call with `opts.parser = false`. See
+`:h notify.parsers` and `:h notify-render` for details.
+
+### Interactive demo
+
+Use `:NotificationsDemo` to exercise the plugin against every built-in
+renderer and a set of title/body variants. The first invocation opens a
+scratch buffer pre-filled with the default options:
+
+```vim
+:NotificationsDemo
+```
+
+Edit the buffer to tweak `opts` (timing, levels, renderers cycled) or
+`variants` (title/body generators), then press `<CR>` in normal mode to run
+the demo, or `q` to dismiss. Use `:NotificationsDemoStop` to cancel an
+in-progress demo. See `:h notify.demo` for details.
+
 ## Configuration
 
 ### Setup

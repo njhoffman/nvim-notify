@@ -22,10 +22,13 @@ local BUILTIN_STAGES = {
 local default_config = {
   level = vim.log.levels.INFO,
   timeout = 5000,
+  debuglog = nil,
   max_width = nil,
   max_height = nil,
   stages = BUILTIN_STAGES.FADE_IN_SLIDE_OUT,
   render = BUILTIN_RENDERERS.DEFAULT,
+  compact = false,
+  render_ruleset = nil,
   captures = parsers.default_captures,
   formatter = parsers.default_formatter,
   background_colour = "NotifyBackground",
@@ -84,6 +87,9 @@ local default_config = {
 ---@field top_down boolean? whether or not to position the notifications at the top or not
 ---@field merge_duplicates boolean? whether to replace visible notification if new one is the same, can be an integer for min duplicate count
 ---@field highlights table? override highlight groups
+---@field compact boolean? when render = "auto", selects the "compact" ruleset instead of the default
+---@field render_ruleset string? when render = "auto", picks a specific registered ruleset; overrides `compact`
+---@field debuglog table|function|nil Interface for internal debug logging. Accepts plenary.log options (table), a function returning a logger object with level methods, or a function returning `(level, ...)` sink. Defaults to a plenary file logger.
 
 local opacity_warned = false
 
@@ -133,6 +139,7 @@ end
 
 function Config.setup(custom_config)
   local user_config = vim.tbl_deep_extend("keep", custom_config or {}, default_config)
+  local logger = require("notify.util.log").setup(user_config.debuglog)
   local config = {}
 
   function config.merged()
@@ -195,6 +202,14 @@ function Config.setup(custom_config)
     return user_config.render
   end
 
+  function config.compact()
+    return user_config.compact
+  end
+
+  function config.render_ruleset()
+    return user_config.render_ruleset
+  end
+
   function config.minimum_width()
     return user_config.minimum_width
   end
@@ -219,6 +234,10 @@ function Config.setup(custom_config)
 
   function config.highlights()
     return user_config.highlights
+  end
+
+  function config.debuglog()
+    return logger
   end
 
   local stages = config.stages()
