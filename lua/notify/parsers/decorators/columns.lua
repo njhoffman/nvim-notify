@@ -1,5 +1,5 @@
 --- `columns` decorator: aligns structured rows into justified columns
---- with optional per-column highlight groups.
+--- with optional per-column or per-cell highlight groups.
 ---
 --- Payload shape (`opts.payload.data`):
 --- >lua
@@ -16,8 +16,18 @@
 ---       min_widths = { 10, 5 },   -- optional, per-column lower bound
 ---     }
 --- <
+---
+--- Cells may be plain strings or `{ text, hl_group }` tuples. A per-cell
+--- `hl_group` wins over the column-level `highlight`.
 
 local M = {}
+
+local function cell_parts(cell)
+  if type(cell) == "table" then
+    return cell[1] or "", cell[2]
+  end
+  return cell or "", nil
+end
 
 local function max_display_width(rows, column_count)
   local widths = {}
@@ -26,8 +36,8 @@ local function max_display_width(rows, column_count)
   end
   for _, row in ipairs(rows) do
     for i = 1, column_count do
-      local cell = row[i] or ""
-      local w = vim.str_utfindex(cell)
+      local text = cell_parts(row[i])
+      local w = vim.str_utfindex(text)
       if w > widths[i] then
         widths[i] = w
       end
@@ -82,14 +92,15 @@ local function format(opts)
     local cells = {}
     local cursor = 0
     for i = 1, column_count do
-      local raw = row[i] or ""
+      local text, cell_hl = cell_parts(row[i])
       local col = cols[i] or {}
-      local padded = pad(raw, widths[i], col.align or "left")
+      local padded = pad(text, widths[i], col.align or "left")
       local start_col = cursor
       local end_col = cursor + #padded
       cells[i] = padded
-      if col.highlight then
-        table.insert(inline, { col.highlight, row_idx - 1, start_col, end_col })
+      local hl = cell_hl or col.highlight
+      if hl then
+        table.insert(inline, { hl, row_idx - 1, start_col, end_col })
       end
       cursor = end_col + #separator
     end

@@ -91,6 +91,25 @@ describe("notify.parsers built-ins", function()
       assert.is.Nil(opts.captures.layout)
     end)
 
+    it("accepts per-cell `{ text, hl_group }` tuples that override column hl", function()
+      local _, _, opts = run({
+        rows = {
+          { "apple", { "1", "Number" } },
+          { { "banana", "Identifier" }, "42" },
+        },
+        columns = {
+          { align = "left", highlight = "Keyword" },
+          { align = "right", highlight = "Comment" },
+        },
+      })
+      assert.are.same({
+        { "Keyword", 0, 0, 6 },
+        { "Number", 0, 7, 9 },
+        { "Identifier", 1, 0, 6 },
+        { "Comment", 1, 7, 9 },
+      }, opts.highlights.inline)
+    end)
+
     it("center-aligns when requested", function()
       local msg = run({
         rows = { { "abc", "xxxxxx" } },
