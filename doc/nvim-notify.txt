@@ -357,14 +357,13 @@ custom renderers via `notif.captures`.
 
 Bypass the whole pipeline with `opts.parser = false`.
 
-Built-in decorator: ~
-`lines` — takes `opts.payload = { kind = "lines", data = <rows> }` where
-each row is either a plain string or a list of segments. Each segment is
-either a plain string or a `{ text, hl_group }` tuple. Produces the
-flattened text and inline highlights pointing at segments that carried a
-group.
+Built-in decorators ~
 
-Example: ~
+`lines` — `opts.payload = { kind = "lines", data = <rows> }` where each
+row is either a plain string or a list of segments. Each segment is
+either a plain string or a `{ text, hl_group }` tuple. Produces the
+flattened text plus inline highlights pointing at segments that carried
+a group.
 >lua
     vim.notify("", "info", {
       payload = {
@@ -376,6 +375,42 @@ Example: ~
       },
     })
 <
+
+`columns` — `opts.payload = { kind = "columns", data = <spec> }` where
+`<spec>` is:
+>lua
+    {
+      rows      = { { "cell1", "cell2", ... }, ... },
+      columns   = { { align = "left|center|right", highlight = <group> }, ... },
+      separator = " ",           -- optional, between columns
+      min_widths = { 10, 5, ... }, -- optional, per-column lower bound
+    }
+<
+Produces aligned text and, for every column that carries `highlight`, one
+inline range per row pointing at that column's span.
+>lua
+    vim.notify("", "info", {
+      payload = {
+        kind = "columns",
+        data = {
+          rows = { { "apple", "1" }, { "banana", "42" } },
+          columns = {
+            { align = "left",  highlight = "Keyword" },
+            { align = "right", highlight = "Comment" },
+          },
+        },
+      },
+    })
+<
+
+Built-in matchers ~
+
+`errorpath` — detects `file:line` or `file:line:col` patterns in the
+first line of the message. On a hit, captures
+`{ isError, errorFile, errorLine, errorCol?, errorPath, errorBounds }`
+and adds an inline `NotifyERRORTitle` highlight across the matched span.
+Plain `word:number` (no dot, slash, or backslash in the file part) is
+intentionally not claimed.
 
 Register your own: ~
 >lua

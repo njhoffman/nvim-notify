@@ -241,6 +241,35 @@ vim.notify("", "info", {
 })
 ```
 
+The built-in `columns` decorator aligns rows into justified columns and
+adds per-column inline highlights:
+
+```lua
+vim.notify("", "info", {
+  payload = {
+    kind = "columns",
+    data = {
+      rows = { { "apple", "1" }, { "banana", "42" } },
+      columns = {
+        { align = "left",  highlight = "Keyword" },
+        { align = "right", highlight = "Comment" },
+      },
+    },
+  },
+})
+```
+
+The built-in `errorpath` matcher detects `file:line` / `file:line:col`
+patterns in the first line of the message and tags the notification:
+
+```lua
+vim.notify("Error at src/thing.lua:42:7: unexpected symbol", "error")
+-- notif.captures.isError     = true
+-- notif.captures.errorFile   = "src/thing.lua"
+-- notif.captures.errorLine   = 42
+-- notif.captures.errorCol    = 7
+```
+
 Register your own decorators/matchers:
 
 ```lua

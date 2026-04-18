@@ -44,8 +44,10 @@ local parse_message = function(message, level, opts, config)
   return registry.run(message, level, opts, config)
 end
 
--- Auto-register built-in decorators.
+-- Auto-register built-in decorators and matchers.
 require("notify.parsers.decorators.lines").register(registry)
+require("notify.parsers.decorators.columns").register(registry)
+require("notify.parsers.matchers.errorpath").register(registry)
 
 return {
   default_captures = capture.defaults,
