@@ -26,6 +26,14 @@ function M.setup()
 
     hi default link NotifyLogTime Comment
     hi default link NotifyLogTitle Special
+
+    hi default link NotifyERRORCode Error
+    hi default link NotifyERRORMain Title
+    hi default link NotifyERRORFile Directory
+    hi default link NotifyERRORFileLinked Underlined
+    hi default link NotifyERRORLine Constant
+    hi default link NotifyERRORMessage Normal
+    hi default link NotifyERRORStack Comment
   ]])
 end
 

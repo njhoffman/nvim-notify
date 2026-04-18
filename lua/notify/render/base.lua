@@ -146,6 +146,12 @@ local rulesets = {
   default = {
     {
       when = function(notif)
+        return notif.captures and notif.captures.isError
+      end,
+      pick = "error",
+    },
+    {
+      when = function(notif)
         return not has_title(notif) and #notif.message == 1
       end,
       pick = "minimal",
@@ -165,6 +171,12 @@ local rulesets = {
     { pick = "default" },
   },
   compact = {
+    {
+      when = function(notif)
+        return notif.captures and notif.captures.isError
+      end,
+      pick = "error",
+    },
     {
       when = function(notif, config)
         return M.needs_wrap(notif, config)

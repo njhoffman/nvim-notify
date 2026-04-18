@@ -120,49 +120,35 @@ describe("notify.parsers built-ins", function()
     end)
   end)
 
-  describe("errorpath matcher", function()
-    local errorpath = require("notify.parsers.matchers.errorpath")
+  describe("error matcher (registry-level)", function()
+    local err_matcher = require("notify.parsers.matchers.error")
 
     before_each(function()
-      errorpath.register(registry)
+      err_matcher.register(registry)
     end)
 
     local function run(msg)
       return registry.run(msg, "error", {})
     end
 
-    it("detects file:line format with a relative path", function()
+    it("captures isError + file/line/message for a simple file:line: triple", function()
       local _, _, opts = run("Error at foo.lua:42: unexpected symbol")
       assert.is.True(opts.captures.isError)
       assert.equals("foo.lua", opts.captures.errorFile)
       assert.equals(42, opts.captures.errorLine)
-      assert.is.Nil(opts.captures.errorCol)
-      assert.equals("errorpath", opts.captures.matcher)
+      assert.is.truthy(opts.captures.errorMessage:find("unexpected symbol"))
+      assert.equals("error", opts.captures.matcher)
     end)
 
-    it("detects file:line:col format", function()
-      local _, _, opts = run("src/thing.lua:17:3: boom")
-      assert.equals("src/thing.lua", opts.captures.errorFile)
-      assert.equals(17, opts.captures.errorLine)
-      assert.equals(3, opts.captures.errorCol)
-    end)
-
-    it("only scans the first line", function()
+    it("scans multiple lines (not just the first)", function()
       local _, _, opts = run("fine\nbroken.lua:10: bad")
-      assert.is.Nil(opts.captures)
+      assert.is.True(opts.captures.isError)
+      assert.equals("broken.lua", opts.captures.errorFile)
     end)
 
     it("ignores plain word:number pairs with no path characters", function()
       local _, _, opts = run("task foo:42 completed")
       assert.is.Nil(opts.captures)
-    end)
-
-    it("writes an inline highlight over the matched span", function()
-      local _, _, opts = run("Error at foo.lua:42: x")
-      assert.are.same(
-        { "NotifyERRORTitle", 0, 9, 19 },
-        opts.highlights.inline and opts.highlights.inline[1]
-      )
     end)
 
     it("does not tag non-string messages", function()
@@ -171,10 +157,10 @@ describe("notify.parsers built-ins", function()
     end)
   end)
 
-  describe("interaction: columns decorator + errorpath matcher", function()
+  describe("interaction: columns decorator + error matcher", function()
     before_each(function()
       require("notify.parsers.decorators.columns").register(registry)
-      require("notify.parsers.matchers.errorpath").register(registry)
+      require("notify.parsers.matchers.error").register(registry)
     end)
 
     it("runs decorator first, then matcher scans the decorated output", function()
@@ -182,13 +168,13 @@ describe("notify.parsers built-ins", function()
         payload = {
           kind = "columns",
           data = {
-            rows = { { "init.lua:12", "startup failure" } },
+            rows = { { "init.lua:12:", "startup failure" } },
             columns = { { highlight = "Keyword" }, { highlight = "Comment" } },
           },
         },
       })
       assert.equals("columns", opts.captures.decorator)
-      assert.equals("errorpath", opts.captures.matcher)
+      assert.equals("error", opts.captures.matcher)
       assert.equals("init.lua", opts.captures.errorFile)
       assert.equals(12, opts.captures.errorLine)
     end)

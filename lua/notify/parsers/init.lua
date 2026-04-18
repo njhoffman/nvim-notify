@@ -47,7 +47,7 @@ end
 -- Auto-register built-in decorators and matchers.
 require("notify.parsers.decorators.lines").register(registry)
 require("notify.parsers.decorators.columns").register(registry)
-require("notify.parsers.matchers.errorpath").register(registry)
+require("notify.parsers.matchers.error").register(registry)
 
 return {
   default_captures = capture.defaults,
