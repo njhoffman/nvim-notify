@@ -365,7 +365,25 @@ See `:help notify-render()` for details
 
 4. "compact"
 
-6. "wrapped-compact"
+5. "inline"
+
+   Icon and title are rendered inside the top border row (like snacks.nvim's
+   `compact` notifier style). Title alignment dispatches on the user's
+   original `title` input:
+
+   - `title = "title_1"` (string) — icon and title centered as a single block.
+   - `title = { "title_1" }` — left-anchored icon and title.
+   - `title = { "", "title_1" }` — title right-aligned, leading filler border.
+   - `title = { "title_1", "title_2" }` — left/right split (matches `default`).
+
+6. "borderless"
+
+   No decorative `━` border row (like snacks.nvim's `minimal` notifier style).
+   Icon is drawn as inline virtual text on the first message line; title is
+   right-aligned at the line's far edge. Pair with a stage that sets
+   `border = "none"` for a fully borderless look.
+
+7. "wrapped-compact"
 
 Similar to `minimal`, but lines are wrapped based on `max_width`, some padding is added.
 

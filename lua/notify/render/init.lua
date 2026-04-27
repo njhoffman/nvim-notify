@@ -11,6 +11,12 @@
 --- - `"minimal"`
 --- - `"simple"`
 --- - `"compact"`
+--- - `"inline"` — icon and title rendered inside the top border row.
+---   Title alignment dispatches on the user's original `title` input:
+---   string → centered; `{ "t" }` → left; `{ "", "t" }` → right;
+---   `{ "l", "r" }` → left/right split.
+--- - `"borderless"` — no decorative border row; icon as inline virt-text on
+---   the first message line, title right-aligned at the line's far edge.
 --- - `"wrapped-default"`
 --- - `"wrapped-compact"`
 --- - `"wrapped-minimal"`

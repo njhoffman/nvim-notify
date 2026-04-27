@@ -25,6 +25,16 @@ return {
       return { props.name .. "(" .. props.render .. ")", "10:50:32" }
     end,
   },
+  title_1_table = {
+    title = function(props)
+      return { props.name .. "(" .. props.render .. ")" }
+    end,
+  },
+  title_right = {
+    title = function(props)
+      return { "", props.name .. "(" .. props.render .. ")" }
+    end,
+  },
   -- basic_multi = { },
   -- title_1_long = { },
   -- title_2_long = { },

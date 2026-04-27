@@ -16,8 +16,9 @@
 ---         group_timeout = 4000,
 ---         levels = { "trace", "debug", "info", "warn", "error" },
 ---         stages = "fade_in_slide_out",
----         renders = { "minimal", "simple", "compact", "default",
----                     "wrapped-minimal", "wrapped-compact", "wrapped-default" },
+---         renders = { "minimal", "borderless", "simple", "compact", "inline",
+---                     "default", "wrapped-minimal", "wrapped-compact",
+---                     "wrapped-default" },
 ---       },
 ---       variants = require("notify.demo.variants"),
 ---     }
@@ -37,8 +38,10 @@ local default_opts = {
   stages = "fade_in_slide_out",
   renders = {
     "minimal",
+    "borderless",
     "simple",
     "compact",
+    "inline",
     "default",
     "wrapped-minimal",
     "wrapped-compact",
@@ -65,8 +68,10 @@ return {
     stages = "fade_in_slide_out",
     renders = {
       "minimal",
+      "borderless",
       "simple",
       "compact",
+      "inline",
       "default",
       "wrapped-minimal",
       "wrapped-compact",

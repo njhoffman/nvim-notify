@@ -4,6 +4,7 @@
 ---@field message string[]
 ---@field timeout number | nil
 ---@field title string[]
+---@field title_input string|string[]|nil raw user title before normalization
 ---@field icon string
 ---@field filetype string
 ---@field time number
@@ -44,7 +45,8 @@ function Notification:new(id, message, level, opts, config)
   end
   level = vim.fn.toupper(level or "info")
   local time = vim.fn.localtime()
-  local title = opts.title or ""
+  local title_input = opts.title
+  local title = title_input or ""
   if type(title) == "string" then
     title = { title, vim.fn.strftime(config.time_formats().notification, time) }
   end
@@ -69,6 +71,7 @@ function Notification:new(id, message, level, opts, config)
     id = id,
     message = message,
     title = title,
+    title_input = title_input,
     icon = opts.icon or config.icons()[level] or config.icons().INFO,
     time = time,
     timeout = opts.timeout,
@@ -98,6 +101,7 @@ function Notification:record()
     level = self.level,
     time = self.time,
     title = self.title,
+    title_input = self.title_input,
     icon = self.icon,
     render = self.render,
     duplicates = self.duplicates,

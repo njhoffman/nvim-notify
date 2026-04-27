@@ -280,6 +280,12 @@ Built-in renderers:
 - `"minimal"`
 - `"simple"`
 - `"compact"`
+- `"inline"` — icon and title rendered inside the top border row.
+  Title alignment dispatches on the user's original `title` input:
+  string → centered; `{ "t" }` → left; `{ "", "t" }` → right;
+  `{ "l", "r" }` → left/right split.
+- `"borderless"` — no decorative border row; icon as inline virt-text on
+  the first message line, title right-aligned at the line's far edge.
 - `"wrapped-default"`
 - `"wrapped-compact"`
 - `"wrapped-minimal"`
@@ -464,8 +470,9 @@ The buffer must evaluate to a table of the form:
         group_timeout = 4000,
         levels = { "trace", "debug", "info", "warn", "error" },
         stages = "fade_in_slide_out",
-        renders = { "minimal", "simple", "compact", "default",
-                    "wrapped-minimal", "wrapped-compact", "wrapped-default" },
+        renders = { "minimal", "borderless", "simple", "compact", "inline",
+                    "default", "wrapped-minimal", "wrapped-compact",
+                    "wrapped-default" },
       },
       variants = require("notify.demo.variants"),
     }
