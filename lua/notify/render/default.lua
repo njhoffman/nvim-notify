@@ -8,9 +8,9 @@ return function(bufnr, notif, highlights, config)
   local right_title = notif.title[2]
   local left_title = base.apply_duplicates(notif.title[1], notif)
 
-  local title_accum = vim.str_utfindex(left_icon)
-    + vim.str_utfindex(right_title)
-    + vim.str_utfindex(left_title)
+  local title_accum = vim.str_utfindex(left_icon, "utf-32")
+    + vim.str_utfindex(right_title, "utf-32")
+    + vim.str_utfindex(left_title, "utf-32")
 
   local left_buffer = string.rep(" ", math.max(0, max_message_width - title_accum))
 
@@ -34,7 +34,7 @@ return function(bufnr, notif, highlights, config)
       {
         string.rep(
           "━",
-          math.max(vim.str_utfindex(left_buffer) + title_accum + 2, config.minimum_width())
+          math.max(vim.str_utfindex(left_buffer, "utf-32") + title_accum + 2, config.minimum_width())
         ),
         highlights.border,
       },

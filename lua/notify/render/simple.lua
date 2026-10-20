@@ -6,7 +6,7 @@ return function(bufnr, notif, highlights, config)
   local max_message_width = util.max_line_width(notif.message)
   local title = base.apply_duplicates(notif.title[1], notif)
 
-  local title_accum = vim.str_utfindex(title)
+  local title_accum = vim.str_utfindex(title, "utf-32")
   local bar_width = math.max(max_message_width, title_accum, config.minimum_width())
   local title_buffer = string.rep(" ", (bar_width - title_accum) / 2)
 

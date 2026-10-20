@@ -37,7 +37,7 @@ local function max_display_width(rows, column_count)
   for _, row in ipairs(rows) do
     for i = 1, column_count do
       local text = cell_parts(row[i])
-      local w = vim.str_utfindex(text)
+      local w = vim.str_utfindex(text, "utf-32")
       if w > widths[i] then
         widths[i] = w
       end
@@ -47,7 +47,7 @@ local function max_display_width(rows, column_count)
 end
 
 local function pad(text, width, align)
-  local w = vim.str_utfindex(text)
+  local w = vim.str_utfindex(text, "utf-32")
   if w >= width then
     return text
   end
