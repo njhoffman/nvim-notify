@@ -2,10 +2,10 @@
 local M = {}
 
 -- vim.islist: added in 0.10, replaces vim.tbl_islist
-M.islist = vim.islist or vim.tbl_islist
+M.islist = vim.islist
 
 -- vim.isarray: added in 0.10, replaces vim.tbl_islist
-M.isarray = vim.isarray or vim.tbl_islist
+M.isarray = vim.isarray
 
 -- vim.validate: 3-argument form (name, value, type) is 0.11+ only.
 -- Translate to old form {[name] = {value, type}} on older versions.

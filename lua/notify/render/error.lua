@@ -41,7 +41,7 @@ local function file_exists(path)
   if path:match("%.%.%.") then
     return false
   end
-  local ok, stat = pcall(vim.loop.fs_stat, path)
+  local ok, stat = pcall(vim.uv.fs_stat, path)
   return ok and stat and stat.type == "file" or false
 end
 
