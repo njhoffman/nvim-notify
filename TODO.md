@@ -5,24 +5,6 @@ Open work on this fork, from profiling startup in the Neovim config that uses it
 
 Reviewed: 2026-11-05
 
-## Performance
-
-- [x] **The render loop runs at full fps while nothing moves.** (p2) [perf] Once every window is settled in its timed stage
-      the loop runs every 500 ms instead of every frame, and timers, new notifications, replacements, closed windows and
-      resizes wake it at once. Measured over 2 s of hold with three windows: 61 renders down to about 10, and 60-110 ms of
-      CPU down to under 10 ms. It keeps a slow tick rather than stopping, so custom stages with changing goals and windows
-      closed with `:noautocmd` are still noticed.
-- [x] **Every open window repaints on each animation frame.** (p2) [perf] Confirmed: `nvim_set_hl` on a global group repaints
-      every window. Faded colours now live in a highlight namespace per window (`nvim_win_set_hl_ns`), unchanged colours are
-      not rewritten, and each tick flushes once and only if something changed. Measured over three notifications: 476 line
-      updates per window down to 191, 37,543 terminal cells down to 27,340, and 870-1,160 ms of CPU down to 140-160 ms.
-      Fade colours match the old code frame for frame. `winblend` was rejected: it saves about the same CPU but shows
-      the text underneath and ignores `background_colour`.
-- [ ] **Slide-ins take longer when others are open.** (p3) [perf] Not reproduced in isolation: three windows sent together or 0.3 s
-      apart each take 1.98 s to reach their timed stage, before and after the repaint fix, so windows do not slow each other.
-      The 0.6 / 1.3 / 1.4 s figures came from one real startup, so startup load is the remaining suspect; measure in the real
-      config. Fade-ins were later cut from about 2 s to 1.35 s by stopping once the colours stop changing.
-
 ## Bugs
 
 - [x] **Render errors fill the log.** (p2) [bug] Three causes, all reproduced and fixed: `wrapped-compact` wrote past its title
@@ -41,9 +23,9 @@ Reviewed: 2026-11-05
       shows one, keeping the duplicate count. `compact` shortens its title so the message stays visible.
 - [x] **`custom_wrap` drops blank lines.** (p3) [bug] Blank lines now survive wrapping, so wrapped messages keep their paragraph
       breaks.
-- [x] **A test run can lose output and still pass.** (p3) [test] `scripts/test` now requires one summary for each spec file, so
-      a run that loses a summary fails instead of passing. The cause is still not confirmed; one full run in 16 lost
-      output, so an occasional failure reading "N of M spec files reported a summary" is this, and a rerun is the check.
+- [x] **A test run can lose output and still pass.** (p3) [test] Plenary sometimes loses some or all of a spec's output, in 5 of about
+      76 full runs, 3 of them in one batch of 6, so the rate varies. It takes its exit status from each spec's exit code, so a failure in lost output still fails the run.
+      `scripts/test` now warns about a missing summary, and fails only if nvim failed or no summary appeared at all.
 - [x] **Tests and scripts write to the real log.** (p3) [test] `scripts/test` now uses a temporary `XDG_STATE_HOME`.
 - [x] **`render/default.lua` fails the style check.** (p3) [chore] Formatted; `stylua --check lua tests` passes.
 - [x] **`setup({ timeout = false })` stops the render loop.** (p2) [bug] `_start_timer` and `on_refresh` now share one timeout lookup: a
@@ -75,6 +57,24 @@ Reviewed: 2026-11-05
       including `shadow` and border lists.
 
 ## Completed
+
+### Performance (completed 2026-11-05)
+
+- [x] **The render loop runs at full fps while nothing moves.** (p2) [perf] Once every window is settled in its timed stage
+      the loop runs every 500 ms instead of every frame, and timers, new notifications, replacements, closed windows and
+      resizes wake it at once. Measured over 2 s of hold with three windows: 61 renders down to about 10, and 60-110 ms of
+      CPU down to under 10 ms. It keeps a slow tick rather than stopping, so custom stages with changing goals and windows
+      closed with `:noautocmd` are still noticed.
+- [x] **Every open window repaints on each animation frame.** (p2) [perf] Confirmed: `nvim_set_hl` on a global group repaints
+      every window. Faded colours now live in a highlight namespace per window (`nvim_win_set_hl_ns`), unchanged colours are
+      not rewritten, and each tick flushes once and only if something changed. Measured over three notifications: 476 line
+      updates per window down to 191, 37,543 terminal cells down to 27,340, and 870-1,160 ms of CPU down to 140-160 ms.
+      Fade colours match the old code frame for frame. `winblend` was rejected: it saves about the same CPU but shows
+      the text underneath and ignores `background_colour`.
+- [x] **Slide-ins take longer when others are open.** (p3) [perf] Other notifications were not the cause. Measured in the real
+      config: 1.36 s each when idle, but 1.63 to 2.77 s during startup, when plugin loading blocks the main loop for up to
+      880 ms. The spring advanced a fixed `1 / fps` per frame, so each stall added its full length. It now uses the time
+      that really passed, limited to 0.25 s per frame.
 
 ### Docs (completed 2026-11-05)
 

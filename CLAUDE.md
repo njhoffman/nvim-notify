@@ -12,7 +12,7 @@ nvim-notify is a fancy, configurable notification manager for NeoVim. It provide
 - Run all tests: `./scripts/test`
 - Run a single test file: `./scripts/test tests/unit/init_spec.lua`
 - Tests use plenary.nvim and run headless with the init file at `tests/init.vim`
-- `./scripts/test` exits 0 only if every spec file reported a summary and nothing failed; a "N of M spec files reported a summary" failure with no failed tests may be lost output, so rerun to check
+- `./scripts/test` exits 0 only if specs ran and nothing failed; a "N of M spec files reported a summary" warning means plenary lost some of a spec's output, and nvim's exit status still covers that spec
 - **Note**: Tests require plenary.nvim to be installed in Neovim's runtime path
 - Requires Neovim 0.11+; CI tests against 0.11.0 and nightly
 

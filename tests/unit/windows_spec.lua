@@ -671,6 +671,29 @@ describe("fade length", function()
     assert.equals(0xffffff, body.fg)
   end)
 
+  a.it("is not lengthened by a blocked main loop", function()
+    setup("fade")
+    local reached = false
+    animator_class._start_timer = function(...)
+      reached = true
+      return animator_class_timer(...)
+    end
+    local start = vim.uv.hrtime()
+    notify.notify("stalled")
+    -- Three stalls of 200 ms, under the step limit. Counting frames would add all 600 ms.
+    for _ = 1, 3 do
+      a.util.sleep(100)
+      a.util.scheduler()
+      vim.uv.sleep(200)
+    end
+    a.util.scheduler()
+    vim.wait(5000, function()
+      return reached
+    end, 10)
+    local elapsed = (vim.uv.hrtime() - start) / 1e6
+    assert.is_true(elapsed < 1750, "took " .. elapsed)
+  end)
+
   a.it("lands on exactly full opacity", function()
     local highlights_class =
       getmetatable(require("notify.service.buffer.highlights")({ level = "INFO" }, 0, {
@@ -849,6 +872,78 @@ describe("notification service wake", function()
       end,
     }, animator)
   end
+
+  describe("frame time", function()
+    local real_hrtime = vim.uv.hrtime
+    local now, steps, service
+
+    before_each(function()
+      now, steps = 0, {}
+      vim.uv.hrtime = function()
+        return now
+      end
+      service = settled_service()
+      service._animator.render = function(_, _, time)
+        table.insert(steps, time)
+        return true, false
+      end
+    end)
+
+    after_each(function()
+      vim.uv.hrtime = real_hrtime
+    end)
+
+    local function close_to(expected, actual)
+      assert.is_true(math.abs(expected - actual) < 1e-6, tostring(actual))
+    end
+
+    local function frame_after(seconds)
+      now = now + seconds * 1e9
+      service:_run()
+    end
+
+    it("uses the frame rate for the first frame", function()
+      service:_run()
+      close_to(1 / 30, steps[1])
+    end)
+
+    it("uses the time that passed for later frames", function()
+      service:_run()
+      frame_after(0.1)
+      close_to(0.1, steps[2])
+    end)
+
+    it("limits the step after a long stall", function()
+      service:_run()
+      frame_after(5)
+      close_to(0.25, steps[2])
+    end)
+
+    it("starts again from the frame rate after settling", function()
+      service:_run()
+      service._animator.render = function(_, _, time)
+        table.insert(steps, time)
+        return true, true
+      end
+      frame_after(0.05)
+      frame_after(0.5)
+      close_to(1 / 30, steps[3])
+    end)
+
+    it("starts again from the frame rate after the loop stops", function()
+      service:_run()
+      service._animator.render = function()
+        return false, false
+      end
+      frame_after(0.05)
+      service._animator.render = function(_, _, time)
+        table.insert(steps, time)
+        return true, false
+      end
+      frame_after(60)
+      close_to(1 / 30, steps[#steps])
+    end)
+  end)
 
   it("ignores a run that was already queued when it woke", function()
     local service = settled_service()

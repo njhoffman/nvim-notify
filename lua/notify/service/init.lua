@@ -10,12 +10,17 @@ local NotificationBuf = require("notify.service.buffer")
 ---@field private _fps integer
 ---@field private _next_run table|nil Identifies the scheduled run, a stale one must not fire
 ---@field private _sleeping uv.uv_timer_t|nil Timer of the scheduled run while settled
+---@field private _last_frame integer|nil When the previous animating frame ran, from vim.uv.hrtime
 local NotificationService = {}
 
 -- How often the loop runs while every window is settled. Timers, new notifications, replacements,
 -- closed windows and resizes wake it immediately; this catches what they cannot, such as stages
 -- with goals that change over time or windows closed with :noautocmd.
 local SETTLED_INTERVAL_MS = 500
+
+-- The longest step an animation takes in one frame, so it catches up after a blocked main loop
+-- without leaping across the screen.
+local MAX_FRAME_SECONDS = 0.25
 
 ---@class notify.ServiceConfig
 ---@field fps integer
@@ -75,11 +80,22 @@ function NotificationService:_wake()
   self:_run()
 end
 
+--- Seconds to advance animations by. Uses the time that really passed, so a slow frame does not
+--- make an animation take longer. The first frame after a pause has nothing to measure from.
+function NotificationService:_frame_seconds(now)
+  if not self._last_frame then
+    return 1 / self._fps
+  end
+  return math.min((now - self._last_frame) / 1e9, MAX_FRAME_SECONDS)
+end
+
 function NotificationService:_run()
   self._running = true
   self:_create_autocmds()
+  local now = vim.uv.hrtime()
   local succees, updated, settled =
-    pcall(self._animator.render, self._animator, self._pending, 1 / self._fps)
+    pcall(self._animator.render, self._animator, self._pending, self:_frame_seconds(now))
+  self._last_frame = (succees and updated and not settled) and now or nil
   if not succees then
     print("Error running notification service: " .. updated)
     self._running = false

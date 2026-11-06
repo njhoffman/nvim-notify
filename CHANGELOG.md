@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.22.2] - 2026-11-05
+
+### Fixed
+- Animations follow real time instead of counting frames, so a busy Neovim, such as during startup, no
+  longer makes them take longer. An animation catches up after a stall, by up to 0.25 s per frame.
+- `scripts/test` no longer fails at random when plenary loses a spec's output. It warns
+  instead, and still fails if nvim reports a failure or no spec reports a summary.
+
 ## [3.22.1] - 2026-11-05
 
 ### Changed

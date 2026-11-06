@@ -108,10 +108,26 @@ describe("scripts/test", function()
     assert.equals(1, status)
   end)
 
-  it("fails when a spec file's summary is missing", function()
+  it("warns but passes when nvim succeeded and a summary was lost", function()
     local status, output = run(summary())
+    assert.equals(0, status)
+    assert.is_truthy(output:find("Warning: 1 of 2 spec files", 1, true))
+  end)
+
+  it("fails when nvim failed and a summary was lost", function()
+    local status = run(summary(), { status = 1 })
     assert.equals(1, status)
-    assert.is_truthy(output:find("1 of 2 spec files", 1, true))
+  end)
+
+  it("fails when no spec file reported a summary", function()
+    local status, output = run({})
+    assert.equals(1, status)
+    assert.is_truthy(output:find("no spec file reported a summary", 1, true))
+  end)
+
+  it("does not warn when every summary is there", function()
+    local _, output = run(two_clean())
+    assert.is_nil(output:find("Warning", 1, true))
   end)
 
   it("fails on a failed test whose summary was lost", function()
