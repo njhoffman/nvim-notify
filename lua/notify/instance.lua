@@ -181,13 +181,28 @@ return function(user_config, inherit, global_config)
   end
 
   function instance.async(message, level, opts)
-    opts = opts or {}
+    opts = vim.tbl_extend("force", {}, opts or {})
     local async = require("plenary.async")
+
+    --- Run the caller's callback, then resolve the event even if that callback failed.
+    local function resolving(send, callback)
+      return function(...)
+        local ok, err = true, nil
+        if callback then
+          ok, err = pcall(callback, ...)
+        end
+        send(...)
+        if not ok then
+          error(err, 0)
+        end
+      end
+    end
+
     local send_close, wait_close = async.control.channel.oneshot()
-    opts.on_close = send_close
+    opts.on_close = resolving(send_close, opts.on_close)
 
     local send_open, wait_open = async.control.channel.oneshot()
-    opts.on_open = send_open
+    opts.on_open = resolving(send_open, opts.on_open)
 
     async.util.scheduler()
     local record = instance.notify(message, level, opts)

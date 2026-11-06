@@ -319,10 +319,15 @@ describe("window width", function()
     end)
 
     it("still renders the same prefix in compact", function()
-      local _, _, lines = run("compact", {
+      local buf = vim.api.nvim_create_buf(false, true)
+      render["compact"](buf, {
         title = { "My Title", "" },
+        icon = "I",
+        level = "INFO",
         message = { "body" },
-      }, "Body")
+      }, HIGHLIGHTS, config)
+      local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+      vim.api.nvim_buf_delete(buf, { force = true })
       assert.equals("I | My Title: body", lines[1])
     end)
   end)

@@ -15,7 +15,7 @@ local function resolve_mode(notif)
     if #raw == 0 then
       return "none"
     end
-    return "center", base.apply_duplicates(raw, notif), ""
+    return "center", raw, ""
   end
   if type(raw) == "table" then
     local n = #raw
@@ -27,7 +27,7 @@ local function resolve_mode(notif)
       if type(left) ~= "string" or #left == 0 then
         return "none"
       end
-      return "left", base.apply_duplicates(left, notif), ""
+      return "left", left, ""
     end
     local left, right = raw[1], raw[2]
     local left_empty = type(left) ~= "string" or #left == 0
@@ -36,12 +36,12 @@ local function resolve_mode(notif)
       return "none"
     end
     if left_empty then
-      return "right", "", base.apply_duplicates(right, notif)
+      return "right", "", right
     end
     if right_empty then
-      return "left", base.apply_duplicates(left, notif), ""
+      return "left", left, ""
     end
-    return "split", base.apply_duplicates(left, notif), right
+    return "split", left, right
   end
   return "none"
 end
@@ -72,6 +72,17 @@ return function(bufnr, notif, highlights, config)
   local icon = notif.icon or ""
   local icon_chunk = icon == "" and "" or (icon .. " ")
   local icon_w = utfwidth(icon_chunk)
+  local max_width = base.max_width(config)
+  if mode == "right" then
+    right_title = base.fit_title(right_title, notif, max_width and max_width - 4)
+  else
+    -- The right title of a split gets at most half the row, the left title takes what remains.
+    if mode == "split" and max_width then
+      right_title = base.truncate(right_title, math.floor(max_width / 2))
+    end
+    local reserved = mode == "split" and utfwidth(right_title) + 6 or 4
+    left_title = base.fit_title(left_title, notif, max_width and max_width - icon_w - reserved)
+  end
   local left_w = utfwidth(left_title)
   local right_w = utfwidth(right_title)
   local message_w = util.max_line_width(notif.message)

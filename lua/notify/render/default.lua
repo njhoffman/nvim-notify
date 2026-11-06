@@ -6,7 +6,11 @@ return function(bufnr, notif, highlights, config)
   local left_icon = notif.icon == "" and "" or notif.icon .. " "
   local max_message_width = util.max_line_width(notif.message)
   local right_title = notif.title[2]
-  local left_title = base.apply_duplicates(notif.title[1], notif)
+  local max_width = base.max_width(config)
+  -- The row is " <icon><title>" and " <time> " aligned right.
+  local available = max_width
+    and max_width - 3 - vim.fn.strdisplaywidth(left_icon) - vim.fn.strdisplaywidth(right_title)
+  local left_title = base.fit_title(notif.title[1], notif, available)
 
   local title_accum = vim.str_utfindex(left_icon, "utf-32")
     + vim.str_utfindex(right_title, "utf-32")

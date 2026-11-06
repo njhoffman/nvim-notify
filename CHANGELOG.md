@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.22.0] - 2026-11-05
+
+### Changed
+- Titles wider than `max_width` are shortened with an ellipsis instead of being cut off at the window
+  edge. The duplicate count stays visible, and `compact` shortens its title to keep the message visible.
+- Custom renderers can use `truncate`, `fit_title` and `max_width` from `notify.render.base`.
+
+### Fixed
+- `notify.async` runs `on_open` and `on_close` passed by the caller, instead of discarding them, and no
+  longer changes the caller's options table.
+- Notifications stack correctly next to windows whose border draws only some sides, such as `shadow`.
+- Fading treesitter-highlighted notifications no longer relies on private Neovim fields.
+
 ## [3.21.6] - 2026-11-05
 
 ### Changed

@@ -127,6 +127,47 @@ function M.apply_duplicates(title, notif, fmt)
   return string.format(fmt or "%s (x%d)", title, #notif.duplicates)
 end
 
+--- Shorten `text` to at most `max_cells` display cells, ending in an ellipsis if it was cut.
+---@param text string
+---@param max_cells integer
+---@return string
+function M.truncate(text, max_cells)
+  if vim.fn.strdisplaywidth(text) <= max_cells then
+    return text
+  end
+  if max_cells <= 1 then
+    return "…"
+  end
+  local kept = M.split_length(text, max_cells - 1)[1]
+  -- split_length always takes one character, which may be wider than the space left.
+  if vim.fn.strdisplaywidth(kept) > max_cells - 1 then
+    return "…"
+  end
+  return kept .. "…"
+end
+
+--- Add the duplicate count to a title and shorten it to fit. The count is never cut off.
+---@param title string
+---@param notif table
+---@param available integer? cells the result may use, nil for no limit
+---@param fmt string? printf format for the duplicate count, see `apply_duplicates`
+---@return string
+function M.fit_title(title, notif, available, fmt)
+  local full = M.apply_duplicates(title, notif, fmt)
+  if not available or vim.fn.strdisplaywidth(full) <= available then
+    return full
+  end
+  local count_width = vim.fn.strdisplaywidth(full) - vim.fn.strdisplaywidth(title)
+  return M.apply_duplicates(M.truncate(title, math.max(1, available - count_width)), notif, fmt)
+end
+
+--- The configured maximum window width, if there is one.
+---@param config table? the config accessor object passed to renderers
+---@return integer?
+function M.max_width(config)
+  return config and config.max_width and config.max_width() or nil
+end
+
 --- Byte length of the UTF-8 character at `index`. Invalid bytes count as one byte each, so pieces
 --- of a line always join back into the original.
 ---@param line string
@@ -233,10 +274,13 @@ end
 
 --- The icon and title that the `compact` renderer puts before the message.
 ---@param notif table
+---@param max_cells integer? shorten the title so the prefix uses at most this many cells
 ---@return string
-function M.compact_prefix(notif)
+function M.compact_prefix(notif, max_cells)
   local icon = notif.icon or ""
-  local title = M.apply_duplicates(vim.tbl_get(notif, "title", 1) or "", notif, "%s x%d")
+  -- The prefix around the title is "<icon> | <title>:".
+  local available = max_cells and max_cells - vim.fn.strdisplaywidth(icon) - 4
+  local title = M.fit_title(vim.tbl_get(notif, "title", 1) or "", notif, available, "%s x%d")
   if #title > 0 then
     return string.format("%s | %s:", icon, title)
   end

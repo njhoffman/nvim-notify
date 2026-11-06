@@ -12,7 +12,7 @@ local function resolve_title(notif)
   return ""
 end
 
-return function(bufnr, notif, highlights)
+return function(bufnr, notif, highlights, config)
   local message = notif.message
   api.nvim_buf_set_lines(bufnr, 0, -1, false, message)
 
@@ -27,7 +27,10 @@ return function(bufnr, notif, highlights)
     })
   end
 
-  local title_text = base.apply_duplicates(resolve_title(notif), notif)
+  local max_width = base.max_width(config)
+  -- The first row is the icon on the left and " <title> " on the right.
+  local available = max_width and max_width - 2 - (icon_w > 0 and icon_w + 1 or 0)
+  local title_text = base.fit_title(resolve_title(notif), notif, available)
   if #title_text > 0 then
     base.set_extmark(bufnr, 0, 0, {
       virt_text = { { " " }, { title_text, highlights.title }, { " " } },

@@ -17,9 +17,14 @@ return function(bufnr, notif, highlights, config)
     and #title > 0
     and not vim.tbl_contains(default_titles, title)
 
-  local prefix = has_valid_manual_title and string.format(" %s %s", icon, title)
-    or string.format(" %s", icon)
-  prefix = base.apply_duplicates(prefix, notif, "%s x%d")
+  local prefix
+  if has_valid_manual_title then
+    -- The title row is " <icon> <title>".
+    local available = max_width - 2 - vim.fn.strdisplaywidth(icon)
+    prefix = string.format(" %s %s", icon, base.fit_title(title, notif, available, "%s x%d"))
+  else
+    prefix = base.apply_duplicates(string.format(" %s", icon), notif, "%s x%d")
+  end
 
   local message, segments = base.custom_wrap(notif.message, max_width, {
     pad_left = " ",

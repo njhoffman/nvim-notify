@@ -623,6 +623,59 @@ describe("stages returning nil", function()
   end)
 end)
 
+describe("notify.async callbacks", function()
+  local notify = require("notify")
+
+  before_each(function()
+    notify.setup({ background_colour = "#000000", stages = "static", timeout = 100 })
+  end)
+
+  after_each(function()
+    notify.dismiss({ pending = true, silent = true })
+  end)
+
+  a.it("runs the caller's callbacks and still resolves its events", function()
+    local opened, closed
+    local notif = notify.async("both", "info", {
+      on_open = function(win)
+        opened = win
+      end,
+      on_close = function(win)
+        closed = win
+      end,
+    })
+    local win = notif.events.open()
+    assert.equals(win, opened)
+    assert.equals(win, notif.events.close())
+    assert.equals(win, closed)
+  end)
+
+  a.it("resolves its events without caller callbacks", function()
+    local notif = notify.async("plain")
+    local win = notif.events.open()
+    assert.equals(win, notif.events.close())
+  end)
+
+  a.it("does not change the caller's options", function()
+    local on_close = function() end
+    local opts = { on_close = on_close }
+    local notif = notify.async("opts", "info", opts)
+    notif.events.open()
+    assert.equals(on_close, opts.on_close)
+    assert.is_nil(opts.on_open)
+  end)
+
+  a.it("resolves close when the caller's on_close fails", function()
+    local notif = notify.async("failing", "info", {
+      on_close = function()
+        error("caller bug")
+      end,
+    })
+    notif.events.open()
+    assert.is_number(notif.events.close())
+  end)
+end)
+
 describe("notification service wake", function()
   local NotificationService = require("notify.service")
   local real_defer_fn = vim.defer_fn

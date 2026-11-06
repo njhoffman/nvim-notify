@@ -7,7 +7,6 @@ local base = require("notify.render.base")
 ---@param config notify.Config
 return function(bufnr, notif, highlights, config)
   local icon = notif.icon .. " "
-  local title = notif.title[1] or "Notify"
 
   local terminal_width = vim.o.columns
   local default_max_width = math.floor((terminal_width * 30) / 100)
@@ -16,7 +15,10 @@ return function(bufnr, notif, highlights, config)
 
   local message, segments = base.custom_wrap(notif.message, max_width)
 
-  local prefix = base.apply_duplicates(string.format(" %s %s", icon, title), notif, "%s x%d")
+  -- The row is " <icon> <title>", where icon includes its own trailing space.
+  local available = max_width - 2 - vim.fn.strdisplaywidth(icon)
+  local title = base.fit_title(notif.title[1] or "Notify", notif, available, "%s x%d")
+  local prefix = string.format(" %s %s", icon, title)
   table.insert(message, 1, prefix)
   table.insert(message, 2, string.rep("━", max_width))
 

@@ -18,11 +18,11 @@ Reviewed: 2026-11-05
       updates per window down to 191, 37,543 terminal cells down to 27,340, and 870-1,160 ms of CPU down to 140-160 ms.
       Fade colours match the old code frame for frame. `winblend` was rejected: it saves about the same CPU but shows
       the text underneath and ignores `background_colour`.
-- [ ] **Slide-ins take longer when others are open.** (p3) [perf] One startup with three notifications: the first animated for
-      about 0.6 s, the second about 1.3 s and the third about 1.4 s, at about 28 fps. Together they kept the screen busy for
-      about 3 s, which the config's benchmark counted as startup time. A single measurement; the cause is not known.
-      Stage frequencies are in `lua/notify/stages/fade_in_slide_out.lua`. Measure again first: the repaint work removed
-      above may have been part of the cause.
+- [ ] **Slide-ins take longer when others are open.** (p3) [perf] Not reproduced in isolation: three windows sent together or 0.3 s
+      apart each take 1.98 s to reach their timed stage, before and after the repaint fix, so windows do not slow each other.
+      The 0.6 / 1.3 / 1.4 s figures came from one real startup, so startup load is the remaining suspect; measure in the real
+      config. The 1.98 s itself comes from the opacity spring at the default frequency, whose last 0.7 s changes no
+      visible colour. A `complete` callback on opacity would shorten it, and would also start the timeout sooner.
 
 ## Bugs
 
@@ -38,9 +38,8 @@ Reviewed: 2026-11-05
       message at `max_width = 30` stayed on a 42-cell line and lost 12 letters. `wrapped-compact` added its prefix after
       wrapping and lost 3. The rule now measures the rendered line, and `custom_wrap` counts `pad_left` and can reserve
       space on the first line.
-- [ ] **Long titles are clipped.** (p3) [bug] A title wider than `max_width` is cut off at the window edge in `wrapped-compact` and
-      `wrapped-default` (measured: 13 and 14 letters of a 40-letter title at width 30), and `max_line_width` does not count it.
-      Decide whether to truncate with an ellipsis or wrap the title.
+- [x] **Long titles are clipped.** (p3) [bug] Titles are now shortened with an ellipsis to fit `max_width` in every renderer that
+      shows one, keeping the duplicate count. `compact` shortens its title so the message stays visible.
 - [x] **`custom_wrap` drops blank lines.** (p3) [bug] Blank lines now survive wrapping, so wrapped messages keep their paragraph
       breaks.
 - [x] **A test run can lose output and still pass.** (p3) [test] `scripts/test` now requires one summary for each spec file, so
@@ -64,17 +63,17 @@ Reviewed: 2026-11-05
 
 ## Cleanup
 
-- [ ] **`notify.async` discards the caller's callbacks.** (p3) [bug] `instance.async` (`lua/notify/instance.lua:187`) overwrites
-      `opts.on_open` and `opts.on_close` with its own channels, so callbacks passed to it never run. Call both.
-- [ ] **The docgen workflow cannot run.** (p3) [chore] `.github/workflows/docgen.yaml` uses `ubuntu-20.04` and Neovim 0.5.1, far
-      below the 0.11 minimum, and `actions/*@v2`. `doc/nvim-notify.txt` was edited by hand in this change as a result.
-      Found by reading the workflow; its CI status has not been checked.
+- [x] **`notify.async` discards the caller's callbacks.** (p3) [bug] Both now run, and the events resolve even if a callback fails. The caller's
+      options table is no longer changed.
+- [ ] **The docgen workflow cannot run.** (p3) [chore] `.github/workflows/docgen.yaml` is updated to `ubuntu-22.04`, Neovim 0.11.0 and
+      current actions, but is not proven to work. Building its `tree-sitter-lua` parser here was blocked, so it has not been
+      run; reading that source found none of the removed APIs searched for. Watch the first CI run, which commits any
+      regenerated docs to the branch. `doc/nvim-notify.txt` has hand edits that this may reword.
 
-- [ ] **Treesitter override depends on private fields.** (p3) [refactor] `_redefine_treesitter` reads `query.hl_cache` and
-      `query._query` (`lua/notify/service/buffer/highlights.lua:139`), which Neovim can change without notice, and nothing
-      guards the call. It works on 0.13-dev today.
-- [ ] **`border_padding` assumes a border on both sides.** (p3) [refactor] `lua/notify/stages/util.lua:55` always returns 2 for
-      any border, as its own TODO comment notes, so a border list with missing sides stacks with the wrong spacing.
+- [x] **Treesitter override depends on private fields.** (p3) [refactor] Now uses `vim.treesitter.get_parser` and `query.get`. It still reads
+      `highlighter.active`, the only way to tell whether treesitter is highlighting a buffer.
+- [x] **`border_padding` assumes a border on both sides.** (p3) [refactor] Now counts the sides a border actually draws along the stacking direction,
+      including `shadow` and border lists.
 
 ## Completed
 

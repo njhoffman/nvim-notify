@@ -78,3 +78,125 @@ describe("available_slot", function()
     end)
   end
 end)
+
+describe("border padding", function()
+  local wins = {}
+  local DASH = "─"
+  local BAR = "│"
+
+  local function open(border)
+    local buf = vim.api.nvim_create_buf(false, true)
+    local win = vim.api.nvim_open_win(buf, false, {
+      relative = "editor",
+      row = 0,
+      col = 0,
+      width = 10,
+      height = 3,
+      border = border,
+    })
+    table.insert(wins, win)
+    return win
+  end
+
+  after_each(function()
+    for _, win in ipairs(wins) do
+      pcall(vim.api.nvim_win_close, win, true)
+    end
+    wins = {}
+  end)
+
+  local vertical = {
+    { "none", "none", 3 },
+    { "rounded", "rounded", 5 },
+    { "top and bottom", { "", DASH, "", "", "", DASH, "", "" }, 5 },
+    { "top only", { "", DASH, "", "", "", "", "", "" }, 4 },
+    { "bottom only", { "", "", "", "", "", DASH, "", "" }, 4 },
+    { "left and right only", { "", "", "", BAR, "", "", "", BAR }, 3 },
+    { "highlighted top only", { "", { DASH, "Title" }, "", "", "", "", "", "" }, 4 },
+    { "shadow", "shadow", 4 },
+    { "highlighted empty top", { "", { "", "Title" }, "", "", "", DASH, "", "" }, 4 },
+  }
+
+  for _, case in ipairs(vertical) do
+    it("stacks below a window with border " .. case[1], function()
+      local win = open(case[2])
+      local slot = stage_util.available_slot({ win }, 2, stage_util.DIRECTION.TOP_DOWN)
+      assert.equals(case[3], slot)
+    end)
+  end
+
+  it("counts the left and right sides when stacking sideways", function()
+    local win = open({ "", "", "", BAR, "", "", "", "" })
+    local slot = stage_util.available_slot({ win }, 2, stage_util.DIRECTION.LEFT_RIGHT)
+    -- Width 10 plus the one right-hand side, from column 0.
+    assert.equals(11, slot)
+  end)
+end)
+
+describe("treesitter highlights", function()
+  local NotifyBufHighlights = require("notify.service.buffer.highlights")
+
+  local function config()
+    return {
+      background_colour = function()
+        return 0
+      end,
+    }
+  end
+
+  it("fades highlighted text in a filetype buffer", function()
+    vim.api.nvim_set_hl(0, "@comment.lua", { fg = "#ffffff" })
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "local x = 1 -- note" })
+    vim.api.nvim_set_option_value("filetype", "lua", { buf = buf })
+    -- tests/init.vim leaves parsers off the runtimepath, so add the ones bundled with nvim.
+    local prefix = vim.fn.fnamemodify(vim.v.progpath, ":h:h")
+    vim.opt.runtimepath:append(prefix .. "/lib/nvim")
+    local parser = vim.treesitter.get_parser(buf, "lua", { error = false })
+    assert.is_not_nil(parser, "no lua parser under " .. prefix .. "/lib/nvim")
+    parser:parse()
+    local ts_highlighter = vim.treesitter.highlighter.new(parser)
+
+    local hl = NotifyBufHighlights({ level = "INFO" }, buf, config())
+    hl:set_opacity(50)
+
+    local group = "@comment.lua" .. buf
+    assert.is_truthy(hl.groups[group])
+    assert.equals(0x808080, vim.api.nvim_get_hl(hl.namespace, { name = group }).fg)
+
+    local ns = vim.api.nvim_create_namespace("notify-treesitter-override")
+    local marks = vim.api.nvim_buf_get_extmarks(buf, ns, 0, -1, { details = true })
+    local found = false
+    for _, mark in ipairs(marks) do
+      if mark[4].hl_group == group then
+        found = true
+        assert.equals(12, mark[3])
+      end
+    end
+    assert.is.True(found)
+
+    hl:clear()
+    ts_highlighter:destroy()
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+
+  it("does nothing when treesitter is not highlighting the buffer", function()
+    local prefix = vim.fn.fnamemodify(vim.v.progpath, ":h:h")
+    vim.opt.runtimepath:append(prefix .. "/lib/nvim")
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "local x = 1 -- note" })
+    vim.api.nvim_set_option_value("filetype", "lua", { buf = buf })
+    local parser = vim.treesitter.get_parser(buf, "lua", { error = false })
+    assert.is_not_nil(parser)
+    parser:parse()
+
+    local hl = NotifyBufHighlights({ level = "INFO" }, buf, config())
+    hl:set_opacity(50)
+
+    assert.is_nil(hl._treesitter_redefined)
+    local ns = vim.api.nvim_create_namespace("notify-treesitter-override")
+    assert.same({}, vim.api.nvim_buf_get_extmarks(buf, ns, 0, -1, {}))
+    hl:clear()
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+end)

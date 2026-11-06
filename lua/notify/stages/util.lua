@@ -52,12 +52,23 @@ local function space_key(direction)
   return moves_vertically(direction) and "height" or "width"
 end
 
--- TODO: Use direction to check border lists
+--- Rows or columns a window's border adds along the stacking direction.
 local function border_padding(direction, win_conf)
-  if not win_conf.border or win_conf.border == "none" then
-    return 0
+  local border = win_conf.border
+  -- nvim_win_get_config reports any drawn border as a list.
+  if type(border) ~= "table" then
+    return (border and border ~= "none") and 2 or 0
   end
-  return 2
+  -- A border list runs clockwise from the top left, and repeats if it has fewer than 8 entries.
+  local function has_side(index)
+    local side = border[(index - 1) % #border + 1]
+    local char = type(side) == "table" and side[1] or side
+    return (char and char ~= "") and 1 or 0
+  end
+  if moves_vertically(direction) then
+    return has_side(2) + has_side(6)
+  end
+  return has_side(4) + has_side(8)
 end
 
 ---@param windows number[]
@@ -175,7 +186,7 @@ function M.slot_after_previous(win, open_windows, direction)
     return move_slot(
       direction,
       start,
-      cur_win_conf[space_key(direction)] + border_padding(direction, cur_win_conf) / 2
+      cur_win_conf[space_key(direction)] + math.floor(border_padding(direction, cur_win_conf) / 2)
     )
   end
 

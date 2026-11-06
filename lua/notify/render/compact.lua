@@ -1,8 +1,11 @@
 local base = require("notify.render.base")
 
-return function(bufnr, notif, highlights)
+return function(bufnr, notif, highlights, config)
   local icon = notif.icon
-  local prefix = base.compact_prefix(notif)
+  local max_width = base.max_width(config)
+  -- Shorten a long title before the message, which matters more, is pushed out of the window.
+  local max_prefix = max_width and max_width - vim.fn.strdisplaywidth(notif.message[1]) - 1
+  local prefix = base.compact_prefix(notif, max_prefix)
   local message = {
     string.format("%s %s", prefix, notif.message[1]),
     unpack(notif.message, 2),
