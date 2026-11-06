@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.22.1] - 2026-11-05
+
+### Changed
+- Fade-ins end once their colours stop changing, about 0.65 s sooner. The timeout starts when the fade
+  ends, so faded notifications also close about 0.65 s sooner.
+
 ## [3.22.0] - 2026-11-05
 
 ### Changed

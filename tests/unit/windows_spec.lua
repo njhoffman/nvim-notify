@@ -623,6 +623,136 @@ describe("stages returning nil", function()
   end)
 end)
 
+describe("fade length", function()
+  local notify = require("notify")
+  local animator_class_timer = animator_class._start_timer
+
+  after_each(function()
+    animator_class._start_timer = animator_class_timer
+    notify.dismiss({ pending = true, silent = true })
+  end)
+
+  local function setup(stages)
+    vim.api.nvim_set_hl(0, "NotifyINFOBody", { fg = "#ffffff" })
+    notify.setup({ background_colour = "#000000", stages = stages, timeout = 1000000 })
+  end
+
+  --- Milliseconds from sending a notification until it reaches its timed stage.
+  local function time_to_hold()
+    local reached = false
+    animator_class._start_timer = function(...)
+      reached = true
+      return animator_class_timer(...)
+    end
+    local start = vim.uv.hrtime()
+    local win = notify.async("fading").events.open()
+    vim.wait(5000, function()
+      return reached
+    end, 10)
+    return (vim.uv.hrtime() - start) / 1e6, win
+  end
+
+  a.it("reaches the timed stage once the colours have stopped changing", function()
+    setup("fade")
+    local elapsed = time_to_hold()
+    -- The whole spring takes about 2 s, and its visible part about 1.35 s.
+    assert.is_true(elapsed > 1000, "too fast: " .. elapsed)
+    assert.is_true(elapsed < 1700, "too slow: " .. elapsed)
+  end)
+
+  a.it("ends on the exact colour", function()
+    setup("fade")
+    local _, win = time_to_hold()
+    a.util.sleep(100)
+    a.util.scheduler()
+    local buf = vim.api.nvim_win_get_buf(win)
+    local ns = vim.api.nvim_get_hl_ns({ winid = win })
+    local body = vim.api.nvim_get_hl(ns, { name = "NotifyINFOBody" .. buf })
+    assert.equals(0xffffff, body.fg)
+  end)
+
+  a.it("lands on exactly full opacity", function()
+    local highlights_class =
+      getmetatable(require("notify.service.buffer.highlights")({ level = "INFO" }, 0, {
+        background_colour = function()
+          return 0
+        end,
+      }))
+    local real_set_opacity = highlights_class.set_opacity
+    local last
+    highlights_class.set_opacity = function(self, alpha)
+      last = alpha
+      return real_set_opacity(self, alpha)
+    end
+    setup("fade")
+    time_to_hold()
+    a.util.sleep(100)
+    a.util.scheduler()
+    highlights_class.set_opacity = real_set_opacity
+    assert.equals(100, last)
+  end)
+
+  a.it("still honours a stage's own complete callback", function()
+    local stages = hold_stages()
+    local hold = stages[2]
+    local passed = false
+    stages[2] = function()
+      return {
+        opacity = {
+          100,
+          complete = function(position)
+            if position >= 99.9999 then
+              passed = true
+            end
+            return passed
+          end,
+        },
+      }
+    end
+    stages[3] = hold
+    stages[4] = function()
+      return {}
+    end
+    setup(stages)
+    local start = vim.uv.hrtime()
+    local reached = false
+    animator_class._start_timer = function(...)
+      reached = true
+      return animator_class_timer(...)
+    end
+    notify.notify("custom")
+    vim.wait(5000, function()
+      return reached
+    end, 10)
+    assert.is_true((vim.uv.hrtime() - start) / 1e6 > 1800)
+  end)
+
+  a.it("does not settle other goals early", function()
+    local stages = hold_stages()
+    local hold = stages[2]
+    stages[2] = function()
+      return { row = { 10, frequency = 1 } }
+    end
+    stages[3] = hold
+    stages[4] = function()
+      return {}
+    end
+    setup(stages)
+    local reached = false
+    animator_class._start_timer = function(...)
+      reached = true
+      return animator_class_timer(...)
+    end
+    local start = vim.uv.hrtime()
+    notify.notify("custom")
+    vim.wait(5000, function()
+      return reached
+    end, 10)
+    -- Within 0.2 of 10 comes at about 0.95 s, and the exact goal at about 1.6 s.
+    assert.is_true((vim.uv.hrtime() - start) / 1e6 > 1300)
+  end)
+end)
+
 describe("notify.async callbacks", function()
   local notify = require("notify")
 

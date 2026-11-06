@@ -5,6 +5,10 @@ local log = require("notify.util.log")
 local round = util.round
 local max = math.max
 
+-- A fade closer to its goal than this is at most one 8-bit colour step away from it. The spring takes
+-- another 0.6 s to cover the rest at the default frequency, with nothing visible to show for it.
+local OPACITY_SETTLED = 0.2
+
 ---@class WindowAnimator
 ---@field config table
 ---@field win_states table<number, table<string, SpringState>>
@@ -265,6 +269,11 @@ function WindowAnimator:_update_window(time, win, open_windows)
   local updated = self:_advance_win_state(win, win_goals, time)
 
   if self:_is_complete(win, win_goals) and not win_goals.time then
+    -- Land exactly on the goal, as a later stage may not animate opacity any further.
+    local opacity_goal = win_goals.opacity
+    if type(opacity_goal) == "table" and not opacity_goal.complete and self.win_states[win] then
+      self.win_states[win].opacity = { position = opacity_goal[1] }
+    end
     self:_advance_win_stage(win)
   end
 
@@ -300,6 +309,8 @@ function WindowAnimator:_is_complete(win, goals)
       if type(goal) == "table" then
         if goal.complete then
           complete = goal.complete(win_state[field].position)
+        elseif field == "opacity" then
+          complete = math.abs(goal[1] - win_state[field].position) < OPACITY_SETTLED
         else
           complete = goal[1] == round(win_state[field].position, 2)
         end

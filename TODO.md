@@ -21,8 +21,7 @@ Reviewed: 2026-11-05
 - [ ] **Slide-ins take longer when others are open.** (p3) [perf] Not reproduced in isolation: three windows sent together or 0.3 s
       apart each take 1.98 s to reach their timed stage, before and after the repaint fix, so windows do not slow each other.
       The 0.6 / 1.3 / 1.4 s figures came from one real startup, so startup load is the remaining suspect; measure in the real
-      config. The 1.98 s itself comes from the opacity spring at the default frequency, whose last 0.7 s changes no
-      visible colour. A `complete` callback on opacity would shorten it, and would also start the timeout sooner.
+      config. Fade-ins were later cut from about 2 s to 1.35 s by stopping once the colours stop changing.
 
 ## Bugs
 
