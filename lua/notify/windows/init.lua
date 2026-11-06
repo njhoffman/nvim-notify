@@ -12,6 +12,9 @@ local max = math.max
 ---@field notif_bufs table<number, NotificationBuf>
 ---@field timers table
 ---@field stages table
+---@field on_wake function|nil Called when a window needs the render loop running at full speed
+---@field _dirty table<number, boolean> Windows that changed since the last flush
+---@field _needs_flush boolean
 local WindowAnimator = {}
 
 function WindowAnimator:new(stages, config)
@@ -22,22 +25,58 @@ function WindowAnimator:new(stages, config)
     notif_bufs = {},
     timers = {},
     stages = stages,
+    _dirty = {},
+    _needs_flush = false,
   }
   self.__index = self
   setmetatable(animator, self)
   return animator
 end
 
+---@return boolean active Whether any windows are still open
+---@return boolean settled Whether every window is waiting in its timed stage with nothing to animate
 function WindowAnimator:render(queue, time)
   self:push_pending(queue)
   if vim.tbl_isempty(self.win_stages) then
-    return false
+    self:_flush()
+    return false, false
   end
   local open_windows = vim.tbl_keys(self.win_stages)
+  local settled = true
   for win, _ in pairs(self.win_stages) do
-    self:_update_window(time, win, open_windows)
+    if not self:_update_window(time, win, open_windows) then
+      settled = false
+    end
   end
-  return true
+  self:_flush()
+  return true, settled
+end
+
+--- Repaint the windows that changed, then flush once so the result is shown during blocking events.
+function WindowAnimator:_flush()
+  local function redraw(opts)
+    local ok, err = pcall(api.nvim__redraw, opts)
+    if not ok then
+      log.error("nvim-notify: Failed to redraw: ", err)
+    end
+  end
+  for win, _ in pairs(self._dirty) do
+    self._dirty[win] = nil
+    if api.nvim_win_is_valid(win) then
+      redraw({ win = win, valid = false })
+      self._needs_flush = true
+    end
+  end
+  if self._needs_flush then
+    self._needs_flush = false
+    redraw({ flush = true })
+  end
+end
+
+function WindowAnimator:_wake()
+  if self.on_wake then
+    self.on_wake()
+  end
 end
 
 function WindowAnimator:push_pending(queue)
@@ -75,9 +114,11 @@ function WindowAnimator:push_pending(queue)
             .. ",FloatBorder:"
             .. notif_buf.highlights.border
         )
+        notif_buf.highlights:attach(win)
         self.win_stages[win] = 2
         self.win_states[win] = {}
         self.notif_bufs[win] = notif_buf
+        self._dirty[win] = true
         queue:pop()
         notif_buf:open(win)
       end
@@ -114,6 +155,8 @@ function WindowAnimator:_remove_win(win)
   pcall(api.nvim_win_close, win, true)
   self.win_stages[win] = nil
   self.win_states[win] = nil
+  self._dirty[win] = nil
+  self._needs_flush = true
   local notif_buf = self.notif_bufs[win]
   self.notif_bufs[win] = nil
   notif_buf:close(win)
@@ -124,6 +167,7 @@ function WindowAnimator:on_refresh(win)
   if not notif_buf then
     return
   end
+  self._dirty[win] = true
   if self.timers[win] then
     self.timers[win]:set_repeat(notif_buf:timeout() or self.config.default_timeout())
     self.timers[win]:again()
@@ -146,15 +190,16 @@ function WindowAnimator:_start_timer(win)
         timer:stop()
         self.timers[win] = nil
         local notif_buf = self.notif_bufs[win]
-        if notif_buf and notif_buf:should_stay() then
-          return
+        if not (notif_buf and notif_buf:should_stay()) then
+          self:_advance_win_stage(win)
         end
-        self:_advance_win_stage(win)
+        self:_wake()
       end)
     )
   end
 end
 
+---@return boolean settled Whether the window is waiting in its timed stage with nothing to animate
 function WindowAnimator:_update_window(time, win, open_windows)
   local stage = self.win_stages[win]
   local notif_buf = self.notif_bufs[win]
@@ -186,11 +231,31 @@ function WindowAnimator:_update_window(time, win, open_windows)
     self:_start_timer(win)
   end
 
-  self:_advance_win_state(win, win_goals, time)
+  local updated = self:_advance_win_state(win, win_goals, time)
 
   if self:_is_complete(win, win_goals) and not win_goals.time then
     self:_advance_win_stage(win)
   end
+
+  return win_goals.time ~= nil and not updated and self:_reached_goals(win, win_goals)
+end
+
+--- Unlike `_is_complete`, ignores `complete` callbacks: stages use those to move on before a spring
+--- has come to rest, and a window that is still moving must keep the loop at full speed.
+function WindowAnimator:_reached_goals(win, goals)
+  local win_state = self.win_states[win]
+  if not win_state then
+    return false
+  end
+  for field, goal in pairs(goals) do
+    if type(goal) == "table" then
+      local state = win_state[field]
+      if not state or math.abs(state.position - goal[1]) >= 0.05 then
+        return false
+      end
+    end
+  end
+  return true
 end
 
 function WindowAnimator:_is_complete(win, goals)
@@ -286,15 +351,6 @@ function WindowAnimator:_apply_win_state(win, win_state)
     local notif_buf = self.notif_bufs[win]
     if notif_buf:is_valid() then
       hl_updated = notif_buf.highlights:set_opacity(win_state.opacity.position)
-      vim.fn.setwinvar(
-        win,
-        "&winhl",
-        "NormalNC:NONE"
-          .. ",Normal:"
-          .. notif_buf.highlights.body
-          .. ",FloatBorder:"
-          .. notif_buf.highlights.border
-      )
     end
   end
   local exists, conf = util.get_win_config(win)
@@ -330,16 +386,8 @@ function WindowAnimator:_apply_win_state(win, win_state)
     end
   end
 
-  -- The 'flush' key is set to enforce redrawing during blocking event.
-  if vim.api.nvim_win_is_valid(win) then
-    local redraw_ok, redraw_err = pcall(vim.api.nvim__redraw, {
-      win = win,
-      valid = false,
-      flush = true,
-    })
-    if not redraw_ok then
-      log.error("nvim-notify: Failed to redraw window " .. win .. ": ", redraw_err)
-    end
+  if hl_updated or win_updated then
+    self._dirty[win] = true
   end
   return hl_updated or win_updated
 end

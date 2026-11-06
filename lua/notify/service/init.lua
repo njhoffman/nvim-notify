@@ -8,7 +8,14 @@ local NotificationBuf = require("notify.service.buffer")
 ---@field private _animator WindowAnimator
 ---@field private _buffers table<integer, NotificationBuf>
 ---@field private _fps integer
+---@field private _next_run table|nil Identifies the scheduled run, a stale one must not fire
+---@field private _sleeping uv.uv_timer_t|nil Timer of the scheduled run while settled
 local NotificationService = {}
+
+-- How often the loop runs while every window is settled. Timers, new notifications, replacements,
+-- closed windows and resizes wake it immediately; this catches what they cannot, such as stages
+-- with goals that change over time or windows closed with :noautocmd.
+local SETTLED_INTERVAL_MS = 500
 
 ---@class notify.ServiceConfig
 ---@field fps integer
@@ -25,12 +32,53 @@ function NotificationService:new(config, animator)
   }
   self.__index = self
   setmetatable(service, self)
+  animator.on_wake = function()
+    service:_wake()
+  end
   return service
+end
+
+function NotificationService:_create_autocmds()
+  if self._autocmds_created then
+    return
+  end
+  self._autocmds_created = true
+  local group = vim.api.nvim_create_augroup("nvim-notify-service", { clear = false })
+  local function wake()
+    vim.schedule(function()
+      self:_wake()
+    end)
+  end
+  vim.api.nvim_create_autocmd("VimResized", { group = group, callback = wake })
+  vim.api.nvim_create_autocmd("WinClosed", {
+    group = group,
+    callback = function(args)
+      if self._animator.win_stages[tonumber(args.match)] then
+        wake()
+      end
+    end,
+  })
+end
+
+--- Run the next frame now if the loop is waiting out a settled interval.
+function NotificationService:_wake()
+  local timer = self._sleeping
+  if not timer then
+    return
+  end
+  self._sleeping = nil
+  self._next_run = nil
+  if not timer:is_closing() then
+    timer:stop()
+    timer:close()
+  end
+  self:_run()
 end
 
 function NotificationService:_run()
   self._running = true
-  local succees, updated =
+  self:_create_autocmds()
+  local succees, updated, settled =
     pcall(self._animator.render, self._animator, self._pending, 1 / self._fps)
   if not succees then
     print("Error running notification service: " .. updated)
@@ -41,9 +89,16 @@ function NotificationService:_run()
     self._running = false
     return
   end
-  vim.defer_fn(function()
-    self:_run()
-  end, 1000 / self._fps)
+  local run = {}
+  self._next_run = run
+  local timer = vim.defer_fn(function()
+    -- A woken loop may have already replaced this run while its callback was queued.
+    if self._next_run == run then
+      self._sleeping = nil
+      self:_run()
+    end
+  end, settled and SETTLED_INTERVAL_MS or 1000 / self._fps)
+  self._sleeping = settled and timer or nil
 end
 
 ---@param notif notify.Notification;q
@@ -57,6 +112,8 @@ function NotificationService:push(notif)
 
   if not self._running then
     self:_run()
+  else
+    self:_wake()
   end
   return buf
 end
@@ -107,7 +164,9 @@ function NotificationService:replace(id, notif)
     vim.api.nvim_set_option_value("cursorline", false, { win = win })
     -- vim.api.nvim_win_set_width(win, existing:width())
     -- vim.api.nvim_win_set_height(win, existing:height())
+    existing.highlights:attach(win)
     self._animator:on_refresh(win)
+    self:_wake()
   end
 end
 

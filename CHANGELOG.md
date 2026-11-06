@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [3.21.1] - 2026-11-05
+
+### Changed
+- Fading a notification no longer repaints the editor and the other notifications. Three notifications
+  now use about 85% less CPU over their lifetime, with the same colours on screen.
+- The render loop slows to two ticks a second while every notification is waiting out its timeout, and
+  wakes immediately for new notifications, replacements, closed windows and resizes.
+
+### Fixed
+- Faded text now returns to its exact colour at full opacity instead of stopping one step short.
+
 ## [3.16.0] - 2025-11-07
 
 ### Changed

@@ -103,7 +103,8 @@ Tests use plenary.nvim's async test framework. Use `a.it()` for async tests and 
 
 ## Important Implementation Notes
 
-- The render loop runs at configured FPS (default 30) when notifications are active
+- The render loop runs at configured FPS (default 30) while anything is animating, and every 500 ms once all windows are settled in their timed stage; `NotificationService:_wake` brings it back immediately
+- Opacity is written to a highlight namespace per window (`nvim_win_set_hl_ns`), because changing a global highlight group repaints every window
 - Windows must not be current window to close/advance stages (checked in multiple places)
 - Highlight groups follow pattern `Notify<LEVEL><Section>` (e.g., NotifyERRORBorder)
 - Background color for opacity changes must be RGB hex or highlight group with bg value

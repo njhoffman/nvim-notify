@@ -8,8 +8,24 @@ local util = require("notify.util")
 ---@field icon string
 ---@field body string
 ---@field buffer number
+---@field namespace number|nil Per-window highlight namespace holding the faded colours
 ---@field _config table
+---@field _applied table<string, {fg: number|nil, bg: number|nil}> Last colours written per group
+---@field _attached_win number|nil
 local NotifyBufHighlights = {}
+
+-- Namespaces cannot be deleted, so they are recycled rather than created per notification.
+local free_namespaces = {}
+local namespace_count = 0
+
+local function acquire_namespace()
+  local ns = table.remove(free_namespaces)
+  if ns then
+    return ns
+  end
+  namespace_count = namespace_count + 1
+  return vim.api.nvim_create_namespace("nvim-notify-opacity-" .. namespace_count)
+end
 
 function NotifyBufHighlights:new(notif, buffer, config)
   local level = notif.level or "INFO"
@@ -71,6 +87,7 @@ function NotifyBufHighlights:new(notif, buffer, config)
     buffer = buffer,
     background_colour = config.background_colour(),
     _config = config,
+    _applied = {},
   }
   self.__index = self
 
@@ -157,6 +174,20 @@ function NotifyBufHighlights:_redefine_treesitter()
   return matches
 end
 
+--- Use this object's faded colours in `win`. Does nothing until a fade has started.
+---@param win number
+function NotifyBufHighlights:attach(win)
+  if self.namespace and self._attached_win ~= win then
+    vim.api.nvim_win_set_hl_ns(win, self.namespace)
+    self._attached_win = win
+  end
+end
+
+--- Fade the groups towards the background colour. The colours are written to a namespace used only
+--- by this notification's window, because changing a global group makes Neovim repaint every
+--- window on the screen.
+---@param alpha number
+---@return boolean updated Whether any colour changed
 function NotifyBufHighlights:set_opacity(alpha)
   if
     not self._treesitter_redefined
@@ -165,22 +196,27 @@ function NotifyBufHighlights:set_opacity(alpha)
     self:_redefine_treesitter()
   end
   self.opacity = alpha
+  if next(self.groups) == nil then
+    return false
+  end
+  self.namespace = self.namespace or acquire_namespace()
   local background = self._config.background_colour()
   local updated = false
   for group, fields in pairs(self.groups) do
-    local fg = fields.fg
-    if fg then
-      fg = util.blend(fg, background, alpha / 100)
-    end
-    local bg = fields.bg
-    if bg then
-      bg = util.blend(bg, background, alpha / 100)
-    end
-
-    if fg ~= fields.fg or bg ~= fields.bg then
+    local fg = fields.fg and util.blend(fields.fg, background, alpha / 100)
+    local bg = fields.bg and util.blend(fields.bg, background, alpha / 100)
+    local applied = self._applied[group]
+    if not applied or applied.fg ~= fg or applied.bg ~= bg then
       local hl = vim.tbl_extend("force", fields, { fg = fg, bg = bg })
-      vim.api.nvim_set_hl(0, group, hl)
+      vim.api.nvim_set_hl(self.namespace, group, hl)
+      self._applied[group] = { fg = fg, bg = bg }
       updated = true
+    end
+  end
+  if not self._attached_win then
+    local win = vim.fn.bufwinid(self.buffer)
+    if win ~= -1 then
+      self:attach(win)
     end
   end
   return updated
@@ -193,8 +229,17 @@ end
 function NotifyBufHighlights:clear()
   for group, _ in pairs(self.groups) do
     vim.api.nvim_set_hl(0, group, {})
+    if self.namespace then
+      vim.api.nvim_set_hl(self.namespace, group, {})
+    end
   end
   self.groups = {}
+  self._applied = {}
+  if self.namespace then
+    table.insert(free_namespaces, self.namespace)
+    self.namespace = nil
+  end
+  self._attached_win = nil
 end
 
 ---@return NotifyBufHighlights
