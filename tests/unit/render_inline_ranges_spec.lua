@@ -129,10 +129,10 @@ describe("inline highlight ranges", function()
         local text, logged = run(case.name, {
           title = case.title,
           message = { long },
-          highlights = ranges("Mark", { { 0, #long - 3, #long } }),
+          highlights = ranges("Mark", { { 0, #long - 1, #long } }),
         }, "Mark")
         assert.same({}, logged)
-        assert.same({ "bbb" }, text)
+        assert.same({ "b" }, text)
       end)
 
       it(label .. " highlights multibyte text across wrapped lines", function()
@@ -154,7 +154,7 @@ describe("inline highlight ranges", function()
           highlights = ranges("Mark", { { 0, 0, 8 } }),
         }, "Mark")
         assert.same({}, logged)
-        assert.same({ "padded" }, text)
+        assert.equals("padded", table.concat(text))
       end)
     end
   end)
@@ -162,10 +162,10 @@ describe("inline highlight ranges", function()
   describe("custom_wrap() segments", function()
     it("records where each wrapped line came from", function()
       local lines, segments = base.custom_wrap({ "abcdef", " gh" }, 4, { pad_left = ">" })
-      assert.same({ ">abcd", ">ef", ">gh" }, lines)
+      assert.same({ ">abc", ">def", ">gh" }, lines)
       assert.same({
-        { row = 0, start = 0, finish = 4, col = 1 },
-        { row = 0, start = 4, finish = 6, col = 1 },
+        { row = 0, start = 0, finish = 3, col = 1 },
+        { row = 0, start = 3, finish = 6, col = 1 },
         { row = 1, start = 1, finish = 3, col = 1 },
       }, segments)
     end)
@@ -236,5 +236,94 @@ describe("set_extmark() failures", function()
     log.error = real_error
     vim.api.nvim_buf_delete(buf, { force = true })
     assert.is_truthy(logged[1]:find("line 9, col 0, end_col nil, line length none", 1, true))
+  end)
+end)
+
+describe("window width", function()
+  local render_names = { "wrapped-default", "wrapped-minimal", "wrapped-compact" }
+  local bodies = {
+    ascii = string.rep("abcdefghij", 8),
+    multibyte = string.rep("✓é", 30),
+    wide = string.rep("日本", 15),
+  }
+
+  local function render_lines(name, title, body, width)
+    local buf = vim.api.nvim_create_buf(false, true)
+    local config = {
+      max_width = function()
+        return width
+      end,
+      minimum_width = function()
+        return 3
+      end,
+    }
+    render[name](buf, {
+      title = { title, "" },
+      icon = "I",
+      level = "INFO",
+      message = { body },
+    }, HIGHLIGHTS, config)
+    local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+    vim.api.nvim_buf_delete(buf, { force = true })
+    return lines
+  end
+
+  for _, name in ipairs(render_names) do
+    for _, title in ipairs({ "", "My Title" }) do
+      for kind, body in pairs(bodies) do
+        local label = ("%s %s %s"):format(name, title == "" and "untitled" or "titled", kind)
+
+        it(label .. " fits every line and keeps all the text", function()
+          for width = 14, 40, 3 do
+            local lines = render_lines(name, title, body, width)
+            local joined = {}
+            for _, line in ipairs(lines) do
+              assert.is_true(vim.fn.strdisplaywidth(line) <= width, line)
+              table.insert(joined, line)
+            end
+            local text = table.concat(joined):gsub("%s", "")
+            assert.is_truthy(text:find(body, 1, true))
+          end
+        end)
+      end
+    end
+  end
+
+  describe("the compact ruleset", function()
+    local config = {
+      max_width = function()
+        return 30
+      end,
+      compact = function()
+        return true
+      end,
+      render_ruleset = function() end,
+    }
+
+    local function pick(width, title)
+      return base.pick_renderer({
+        icon = "I",
+        title = { title, "" },
+        message = { string.rep("x", width) },
+      }, config)
+    end
+
+    it("wraps a message that only overflows because of its prefix", function()
+      assert.equals("wrapped-compact", pick(28, "My Title"))
+      assert.equals("wrapped-compact", pick(28, ""))
+    end)
+
+    it("stays on one line when the prefix and message fit", function()
+      assert.equals("compact", pick(16, "My Title"))
+      assert.equals("compact", pick(26, ""))
+    end)
+
+    it("still renders the same prefix in compact", function()
+      local _, _, lines = run("compact", {
+        title = { "My Title", "" },
+        message = { "body" },
+      }, "Body")
+      assert.equals("I | My Title: body", lines[1])
+    end)
   end)
 end)

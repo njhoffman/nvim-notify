@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.21.4] - 2026-11-05
+
+### Fixed
+- `compact` notifications no longer lose the end of their first line. A message that only overflows
+  because of its icon and title now wraps, so it takes more rows than before.
+- `wrapped-compact` and `wrapped-minimal` no longer run past `max_width` on the first line.
+
+### Changed
+- `custom_wrap` now counts `pad_left` towards `max_width`, and accepts `first_line_reserve`.
+
 ## [3.21.3] - 2026-11-05
 
 ### Fixed

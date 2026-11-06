@@ -212,6 +212,10 @@ describe("notify.render.base", function()
       assert.are.same({ "\226a", "bc" }, base.split_length("\226abc", 5))
     end)
 
+    it("uses first_width for the first piece only", function()
+      assert.are.same({ "a", "bcd", "ef" }, base.split_length("abcdef", 3, 1))
+    end)
+
     it("never exceeds the width and never loses a byte", function()
       local line = "plain héllo ✓✓ 日本語 😀 \tend"
       for width = 2, 12 do
@@ -250,7 +254,27 @@ describe("notify.render.base", function()
 
     it("applies pad_left / pad_right", function()
       local out = base.custom_wrap({ "hello" }, 5, { pad_left = ">", pad_right = "<<" })
-      assert.are.same({ ">hel<<", ">lo<<" }, out)
+      assert.are.same({ ">he<<", ">ll<<", ">o<<" }, out)
+    end)
+
+    it("reserves cells on the first wrapped line only", function()
+      local out = base.custom_wrap({ "abcdefgh" }, 4, { first_line_reserve = 2 })
+      assert.are.same({ "ab", "cdef", "gh" }, out)
+    end)
+
+    it("does not reserve cells on later message lines", function()
+      local out = base.custom_wrap({ "abcdef", "ghijkl" }, 4, { first_line_reserve = 2 })
+      assert.are.same({ "ab", "cdef", "ghij", "kl" }, out)
+    end)
+
+    it("applies the reserve to the next line when the first is empty", function()
+      local out = base.custom_wrap({ "", "abcdef" }, 4, { first_line_reserve = 2 })
+      assert.are.same({ "ab", "cdef" }, out)
+    end)
+
+    it("keeps one cell when the reserve is larger than the width", function()
+      local out = base.custom_wrap({ "abc" }, 2, { first_line_reserve = 9 })
+      assert.are.same({ "a", "bc" }, out)
     end)
   end)
 
@@ -302,6 +326,49 @@ describe("notify.render.base", function()
         local cfg = make_config({ max_width = 20 })
         local notif = make_notif({ message = { "short" } })
         assert.is.False(base.needs_wrap(notif, cfg))
+      end)
+    end)
+
+    describe("compact_needs_wrap()", function()
+      local function notif_of(width, title)
+        return {
+          icon = "I",
+          title = { title or "", "" },
+          message = { string.rep("x", width) },
+        }
+      end
+
+      it("returns false when config has no max_width", function()
+        assert.is.False(base.compact_needs_wrap(notif_of(99), make_config()))
+      end)
+
+      it("counts the prefix on the first line", function()
+        local cfg = make_config({ max_width = 30 })
+        -- "I | " is 4 cells.
+        assert.is.False(base.compact_needs_wrap(notif_of(26), cfg))
+        assert.is.True(base.compact_needs_wrap(notif_of(27), cfg))
+      end)
+
+      it("counts the title in the prefix", function()
+        local cfg = make_config({ max_width = 30 })
+        -- "I | My Title: " is 14 cells.
+        assert.is.False(base.compact_needs_wrap(notif_of(16, "My Title"), cfg))
+        assert.is.True(base.compact_needs_wrap(notif_of(17, "My Title"), cfg))
+      end)
+
+      it("checks later lines without the prefix", function()
+        local cfg = make_config({ max_width = 10 })
+        local notif = notif_of(1)
+        notif.message[2] = string.rep("x", 10)
+        assert.is.False(base.compact_needs_wrap(notif, cfg))
+        notif.message[2] = string.rep("x", 11)
+        assert.is.True(base.compact_needs_wrap(notif, cfg))
+      end)
+
+      it("does not change the message", function()
+        local notif = notif_of(3)
+        base.compact_needs_wrap(notif, make_config({ max_width = 10 }))
+        assert.same({ "xxx" }, notif.message)
       end)
     end)
 

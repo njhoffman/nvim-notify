@@ -156,12 +156,14 @@ end
 --- piece of its own.
 ---@param line string
 ---@param width integer
+---@param first_width integer? Width of the first piece, default `width`
 ---@return string[]
-function M.split_length(line, width)
+function M.split_length(line, width, first_width)
   local out = {}
   if width <= 0 then
     return out
   end
+  local limit = first_width or width
   local piece_start = 1
   local used = 0
   local index = 1
@@ -174,9 +176,10 @@ function M.split_length(line, width)
       -- Measured with the text before it: a combining character alone reports one cell.
       width_with_char = vim.fn.strdisplaywidth(line:sub(piece_start, char_end))
     end
-    if used > 0 and width_with_char > width then
+    if used > 0 and width_with_char > limit then
       out[#out + 1] = line:sub(piece_start, index - 1)
       piece_start = index
+      limit = width
       width_with_char = vim.fn.strdisplaywidth(line:sub(index, char_end))
     end
     used = width_with_char
@@ -191,7 +194,9 @@ end
 --- Wrap each entry in `lines` to `max_width`, optionally padding.
 ---@param lines string[]
 ---@param max_width integer
----@param opts table? `{ pad_left = string?, pad_right = string? }`
+---@param opts table? `{ pad_left = string?, pad_right = string?, first_line_reserve = integer? }`
+--- `first_line_reserve` keeps that many cells free on the first wrapped line, for text the renderer
+--- prepends to it.
 ---@return string[] wrapped
 ---@return table[] segments For each wrapped line, where its text came from: `row` and the byte range
 --- `start` to `finish` in the original lines, and `col`, the byte column it begins at in the wrapped
@@ -200,12 +205,15 @@ function M.custom_wrap(lines, max_width, opts)
   opts = opts or {}
   local pad_left = opts.pad_left or ""
   local pad_right = opts.pad_right or ""
-  local inner_width = math.max(1, max_width - #pad_right)
+  local padding = vim.fn.strdisplaywidth(pad_left) + vim.fn.strdisplaywidth(pad_right)
+  local inner_width = math.max(1, max_width - padding)
+  local first_width = math.max(1, inner_width - (opts.first_line_reserve or 0))
   local wrapped = {}
   local segments = {}
   for row, line in ipairs(lines) do
     local offset = 0
-    for _, piece in ipairs(M.split_length(line, inner_width)) do
+    local line_first_width = #wrapped == 0 and first_width or inner_width
+    for _, piece in ipairs(M.split_length(line, inner_width, line_first_width)) do
       local leading = #piece:match("^%s*")
       local text = piece:sub(leading + 1):gsub("%s+$", "")
       wrapped[#wrapped + 1] = pad_left .. text .. pad_right
@@ -219,6 +227,34 @@ function M.custom_wrap(lines, max_width, opts)
     end
   end
   return wrapped, segments
+end
+
+--- The icon and title that the `compact` renderer puts before the message.
+---@param notif table
+---@return string
+function M.compact_prefix(notif)
+  local icon = notif.icon or ""
+  local title = M.apply_duplicates(vim.tbl_get(notif, "title", 1) or "", notif, "%s x%d")
+  if #title > 0 then
+    return string.format("%s | %s:", icon, title)
+  end
+  return string.format("%s |", icon)
+end
+
+--- Return whether the `compact` renderer's lines would overflow `config.max_width`. Unlike
+--- `needs_wrap` this includes the prefix on the first line.
+---@param notif table
+---@param config table the config accessor object passed to renderers
+---@return boolean
+function M.compact_needs_wrap(notif, config)
+  local util = require("notify.util")
+  local max = config and config.max_width and config.max_width() or nil
+  if not max then
+    return false
+  end
+  local lines = vim.deepcopy(notif.message)
+  lines[1] = string.format("%s %s", M.compact_prefix(notif), lines[1] or "")
+  return util.max_line_width(lines) > max
 end
 
 --- Return whether the message would overflow `config.max_width` and needs
@@ -280,7 +316,7 @@ local rulesets = {
     },
     {
       when = function(notif, config)
-        return M.needs_wrap(notif, config)
+        return M.compact_needs_wrap(notif, config)
       end,
       pick = "wrapped-compact",
     },

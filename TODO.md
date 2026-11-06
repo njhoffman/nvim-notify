@@ -34,11 +34,15 @@ Reviewed: 2026-11-05
 - [x] **Wrapping cuts multibyte characters in half.** (p2) [bug] `split_length` (`lua/notify/render/base.lua`) now walks UTF-8
       characters and counts display cells, so wide characters count as two, combining characters stay with their base, and
       invalid bytes pass through unchanged. `segments` from `custom_wrap` stay in bytes.
-- [ ] **`wrapped-compact` clips the first line without a title.** (p2) [bug] Measured at `max_width = 30`: the first line is 34
-      cells and the window shows 30, so 3 of 80 letters are lost. The prefix is added after wrapping, and `custom_wrap` does
-      not subtract `pad_left` either, so later lines are 31 cells and lose their right padding. Reachable with
-      `compact = true`. Reserve the prefix width on the first line, which `split_length` does not support yet, and count
-      `pad_left`; the `custom_wrap` test for padding currently expects the wider result.
+- [x] **`compact` and `wrapped-compact` clip message text.** (p2) [bug] The `compact` rule ignored the prefix, so a 28-cell titled
+      message at `max_width = 30` stayed on a 42-cell line and lost 12 letters. `wrapped-compact` added its prefix after
+      wrapping and lost 3. The rule now measures the rendered line, and `custom_wrap` counts `pad_left` and can reserve
+      space on the first line.
+- [ ] **Long titles are clipped.** (p3) [bug] A title wider than `max_width` is cut off at the window edge in `wrapped-compact` and
+      `wrapped-default` (measured: 13 and 14 letters of a 40-letter title at width 30), and `max_line_width` does not count it.
+      Decide whether to truncate with an ellipsis or wrap the title.
+- [ ] **`custom_wrap` drops blank lines.** (p3) [bug] Confirmed: `custom_wrap({ "a", "", "b" }, 10)` returns `{ "a", "b" }`, because
+      `split_length` returns nothing for an empty line, so wrapped messages lose their paragraph breaks.
 - [ ] **A test run can lose output and still pass.** (p3) [test] One full run in 16 stopped reporting one test before the end of
       `notification_spec.lua` and dropped its summary: 263 counted instead of 281, 0 failed, exit 0. Likely plenary's output
       capture, not confirmed. A failure in the lost output would go unseen. Make `scripts/test` require one summary for each

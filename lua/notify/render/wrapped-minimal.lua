@@ -4,7 +4,8 @@ local base = require("notify.render.base")
 
 return function(bufnr, notif, highlights, config)
   local max_width = config.max_width() or 80
-  local message, segments = base.custom_wrap(notif.message, max_width, { pad_right = "  " })
+  local message, segments =
+    base.custom_wrap(notif.message, max_width, { pad_right = "  ", first_line_reserve = 1 })
   if #message > 0 then
     message[1] = " " .. message[1]
     segments[1].col = segments[1].col + 1

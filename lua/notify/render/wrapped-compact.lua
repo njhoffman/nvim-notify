@@ -12,23 +12,27 @@ return function(bufnr, notif, highlights, config)
   local title = notif.title[1]
 
   local max_width = config.max_width() or 80
-  local message, segments =
-    base.custom_wrap(notif.message, max_width, { pad_left = " ", pad_right = " " })
-
   local default_titles = { "Error", "Warning", "Notify" }
   local has_valid_manual_title = type(title) == "string"
     and #title > 0
     and not vim.tbl_contains(default_titles, title)
 
-  local prefix
+  local prefix = has_valid_manual_title and string.format(" %s %s", icon, title)
+    or string.format(" %s", icon)
+  prefix = base.apply_duplicates(prefix, notif, "%s x%d")
+
+  local message, segments = base.custom_wrap(notif.message, max_width, {
+    pad_left = " ",
+    pad_right = " ",
+    first_line_reserve = has_valid_manual_title and 0 or vim.fn.strdisplaywidth(prefix) + 1,
+  })
+
   -- Where the body starts: the row after a title row, or after the prefix on the first row.
   local body_line, body_col
   if has_valid_manual_title then
-    prefix = base.apply_duplicates(string.format(" %s %s", icon, title), notif, "%s x%d")
     table.insert(message, 1, prefix)
     body_line, body_col = 1, 0
   else
-    prefix = base.apply_duplicates(string.format(" %s", icon), notif, "%s x%d")
     message[1] = string.format("%s %s", prefix, message[1] or "")
     body_line, body_col = 0, #prefix + 1
     if segments[1] then

@@ -2,14 +2,7 @@ local base = require("notify.render.base")
 
 return function(bufnr, notif, highlights)
   local icon = notif.icon
-  local title = base.apply_duplicates(notif.title[1], notif, "%s x%d")
-
-  local prefix
-  if type(title) == "string" and #title > 0 then
-    prefix = string.format("%s | %s:", icon, title)
-  else
-    prefix = string.format("%s |", icon)
-  end
+  local prefix = base.compact_prefix(notif)
   local message = {
     string.format("%s %s", prefix, notif.message[1]),
     unpack(notif.message, 2),
