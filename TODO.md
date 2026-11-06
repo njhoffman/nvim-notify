@@ -43,10 +43,9 @@ Reviewed: 2026-11-05
       Decide whether to truncate with an ellipsis or wrap the title.
 - [ ] **`custom_wrap` drops blank lines.** (p3) [bug] Confirmed: `custom_wrap({ "a", "", "b" }, 10)` returns `{ "a", "b" }`, because
       `split_length` returns nothing for an empty line, so wrapped messages lose their paragraph breaks.
-- [ ] **A test run can lose output and still pass.** (p3) [test] One full run in 16 stopped reporting one test before the end of
-      `notification_spec.lua` and dropped its summary: 263 counted instead of 281, 0 failed, exit 0. Likely plenary's output
-      capture, not confirmed. A failure in the lost output would go unseen. Make `scripts/test` require one summary for each
-      spec file; relates to the `grep -v '0'` item above.
+- [x] **A test run can lose output and still pass.** (p3) [test] `scripts/test` now requires one summary for each spec file, so
+      a run that loses a summary fails instead of passing. The cause is still not confirmed; one full run in 16 lost
+      output, so an occasional failure reading "N of M spec files reported a summary" is this, and a rerun is the check.
 - [ ] **Tests and scripts write to the real log.** (p3) [test] `tests/init.vim` does not redirect the log, so test runs and any
       headless script append to `~/.local/state/nvim/logs/nvim-notify.log` next to real errors. Set `XDG_STATE_HOME` in
       `scripts/test`.
@@ -56,9 +55,9 @@ Reviewed: 2026-11-05
       in `_start_timer` (`lua/notify/windows/init.lua:178`) yields nil, so `timer:start(nil)` errors and the notification
       never closes. `on_refresh` (`:172`) has the same problem with `set_repeat(false)`. Passing `timeout = false` per
       notification works. Test the default for nil explicitly instead of using `and`/`or`.
-- [ ] **`scripts/test` can pass when tests fail.** (p2) [bug] `grep -v '0'` (`scripts/test:11`) drops any count containing a
-      zero, so 10 or 20 failures exit 0. Found by reading the script. Match counts that are not exactly `0`:
-      `grep -vx '0'`.
+- [x] **`scripts/test` can pass when tests fail.** (p2) [bug] Reproduced with real specs: 1 failure exited 1, 10 failures exited
+      0, and CI's `release` job depends on this result. The script now compares counts numerically and respects nvim's
+      exit status, which it used to discard.
 - [ ] **Stage returning nil crashes the window update.** (p3) [bug] `_update_window` (`lua/notify/windows/init.lua:208`) removes
       the window when goals are nil but carries on and indexes them, and the error stops the loop for every notification.
       Found by reading the code. Return right after `_remove_win`.

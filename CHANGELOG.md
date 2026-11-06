@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.21.5] - 2026-11-05
+
+### Fixed
+- `scripts/test` no longer exits 0 when the number of failures contains a zero, such as 10 or 20. It
+  also fails if nvim exits with an error, if no spec files are found, or if a spec file reports no
+  summary.
+
 ## [3.21.4] - 2026-11-05
 
 ### Fixed

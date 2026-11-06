@@ -1,20 +1,45 @@
 #!/bin/bash
-tempfile=".test_output.tmp"
+# Run the specs in a directory or file, default tests/. Exits 0 only if every spec file reported a
+# summary and nothing failed.
 
-if [[ -n $1 ]]; then
-	nvim --headless --noplugin -u tests/init.vim -c "PlenaryBustedDirectory $1 {minimal_init = 'tests/init.vim'}" | tee "${tempfile}"
-else
-	nvim --headless --noplugin -u tests/init.vim -c "PlenaryBustedDirectory tests/ {minimal_init = 'tests/init.vim'}" | tee "${tempfile}"
+target="${1:-tests/}"
+
+output=$(mktemp)
+trap 'rm -f "${output}"' EXIT
+
+nvim --headless --noplugin -u tests/init.vim -c "PlenaryBustedDirectory ${target} {minimal_init = 'tests/init.vim'}" | tee "${output}"
+nvim_status=${PIPESTATUS[0]}
+
+# Plenary finds specs the same way, and prints one summary for each.
+expected=$(find "${target}" -type f -name '*_spec.lua' | wc -l)
+
+read -r summaries failures < <(
+  LC_ALL=C sed 's/\x1b\[[0-9;]*m//g' "${output}" | LC_ALL=C awk '
+    /^Success *:/ { summaries++ }
+    /^(Failed|Errors) *:/ && $3 != 0 { failures += $3 }
+    /^(Fail|Error)[[:space:]]*\|\|/ { failed_tests++ }
+    END {
+      # A failed test whose summary was lost still counts.
+      print summaries + 0, (failures > failed_tests ? failures : failed_tests) + 0
+    }
+  '
+)
+
+status=0
+if [[ ${failures} -ne 0 ]]; then
+  echo "Tests failed: ${failures} failed or errored"
+  status=1
+fi
+if [[ ${nvim_status} -ne 0 ]]; then
+  echo "Tests failed: nvim exited with status ${nvim_status}"
+  status=1
+fi
+if [[ ${expected} -eq 0 ]]; then
+  echo "Tests failed: no spec files found in ${target}"
+  status=1
+elif [[ ${summaries} -ne ${expected} ]]; then
+  echo "Tests failed: ${summaries} of ${expected} spec files reported a summary"
+  status=1
 fi
 
-# Plenary doesn't emit exit code 1 when tests have errors during setup
-errors=$(sed 's/\x1b\[[0-9;]*m//g' "${tempfile}" | awk '/(Errors|Failed) :/ {print $3}' | grep -v '0')
-
-rm "${tempfile}"
-
-if [[ -n $errors ]]; then
-  echo "Tests failed"
-  exit 1
-fi
-
-exit 0
+exit "${status}"
