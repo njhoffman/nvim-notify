@@ -127,7 +127,33 @@ function M.apply_duplicates(title, notif, fmt)
   return string.format(fmt or "%s (x%d)", title, #notif.duplicates)
 end
 
---- Slice a string into pieces of `width` characters.
+--- Byte length of the UTF-8 character at `index`. Invalid bytes count as one byte each, so pieces
+--- of a line always join back into the original.
+---@param line string
+---@param index integer
+---@return integer
+local function char_length(line, index)
+  local byte = line:byte(index)
+  local length = 1
+  if byte >= 0xC2 and byte <= 0xDF then
+    length = 2
+  elseif byte >= 0xE0 and byte <= 0xEF then
+    length = 3
+  elseif byte >= 0xF0 and byte <= 0xF4 then
+    length = 4
+  end
+  for following = index + 1, index + length - 1 do
+    local next_byte = line:byte(following)
+    if not next_byte or next_byte < 0x80 or next_byte > 0xBF then
+      return 1
+    end
+  end
+  return length
+end
+
+--- Slice a string into pieces of at most `width` display cells, without cutting a character.
+--- Combining characters stay with the character before them. A character wider than `width` gets a
+--- piece of its own.
 ---@param line string
 ---@param width integer
 ---@return string[]
@@ -136,9 +162,28 @@ function M.split_length(line, width)
   if width <= 0 then
     return out
   end
-  while #line > 0 do
-    out[#out + 1] = line:sub(1, width)
-    line = line:sub(width + 1)
+  local piece_start = 1
+  local used = 0
+  local index = 1
+  while index <= #line do
+    local length = char_length(line, index)
+    local char_end = index + length - 1
+    local byte = line:byte(index)
+    local width_with_char = used + 1
+    if byte < 0x20 or byte >= 0x7F then
+      -- Measured with the text before it: a combining character alone reports one cell.
+      width_with_char = vim.fn.strdisplaywidth(line:sub(piece_start, char_end))
+    end
+    if used > 0 and width_with_char > width then
+      out[#out + 1] = line:sub(piece_start, index - 1)
+      piece_start = index
+      width_with_char = vim.fn.strdisplaywidth(line:sub(index, char_end))
+    end
+    used = width_with_char
+    index = index + length
+  end
+  if piece_start <= #line then
+    out[#out + 1] = line:sub(piece_start)
   end
   return out
 end

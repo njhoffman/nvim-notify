@@ -135,6 +135,18 @@ describe("inline highlight ranges", function()
         assert.same({ "bbb" }, text)
       end)
 
+      it(label .. " highlights multibyte text across wrapped lines", function()
+        local long = string.rep("✓", 40)
+        local text, logged = run(case.name, {
+          title = case.title,
+          message = { long },
+          highlights = ranges("Mark", { { 0, 0, #long } }),
+        }, "Mark")
+        assert.same({}, logged)
+        assert.equals(long, table.concat(text))
+        assert.is_true(#text > 1)
+      end)
+
       it(label .. " skips whitespace trimmed by wrapping", function()
         local text, logged = run(case.name, {
           title = case.title,

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.21.3] - 2026-11-05
+
+### Fixed
+- Wrapped notifications no longer show garbage where a line break fell inside an icon or accented
+  character. Lines now wrap by display width, so wide characters such as CJK and emoji fit the window.
+
 ## [3.21.2] - 2026-11-05
 
 ### Fixed

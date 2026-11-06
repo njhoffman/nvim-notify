@@ -31,10 +31,18 @@ Reviewed: 2026-11-05
       against the unwrapped message. Inline highlights now land on the right text, split across wrapped lines where needed,
       and the log line records the position and line length. Which cause produced how many of the logged 1,002 is not
       known, so watch `nvim-notify.log` for any that remain.
-- [ ] **Wrapping cuts multibyte characters in half.** (p2) [bug] Confirmed: `split_length`
-      (`lua/notify/render/base.lua`) slices by bytes, so `custom_wrap({ "✓✓✓" }, 4)` returns broken UTF-8 (`✓�`). Long
-      notifications with icons or accents show garbage. It also measures bytes rather than display width. Split on
-      character boundaries, and keep the `segments` returned by `custom_wrap` in bytes.
+- [x] **Wrapping cuts multibyte characters in half.** (p2) [bug] `split_length` (`lua/notify/render/base.lua`) now walks UTF-8
+      characters and counts display cells, so wide characters count as two, combining characters stay with their base, and
+      invalid bytes pass through unchanged. `segments` from `custom_wrap` stay in bytes.
+- [ ] **`wrapped-compact` clips the first line without a title.** (p2) [bug] Measured at `max_width = 30`: the first line is 34
+      cells and the window shows 30, so 3 of 80 letters are lost. The prefix is added after wrapping, and `custom_wrap` does
+      not subtract `pad_left` either, so later lines are 31 cells and lose their right padding. Reachable with
+      `compact = true`. Reserve the prefix width on the first line, which `split_length` does not support yet, and count
+      `pad_left`; the `custom_wrap` test for padding currently expects the wider result.
+- [ ] **A test run can lose output and still pass.** (p3) [test] One full run in 16 stopped reporting one test before the end of
+      `notification_spec.lua` and dropped its summary: 263 counted instead of 281, 0 failed, exit 0. Likely plenary's output
+      capture, not confirmed. A failure in the lost output would go unseen. Make `scripts/test` require one summary for each
+      spec file; relates to the `grep -v '0'` item above.
 - [ ] **Tests and scripts write to the real log.** (p3) [test] `tests/init.vim` does not redirect the log, so test runs and any
       headless script append to `~/.local/state/nvim/logs/nvim-notify.log` next to real errors. Set `XDG_STATE_HOME` in
       `scripts/test`.

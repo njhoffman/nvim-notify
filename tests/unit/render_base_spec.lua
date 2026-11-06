@@ -175,12 +175,77 @@ describe("notify.render.base", function()
     it("returns empty list for non-positive width", function()
       assert.are.same({}, base.split_length("abc", 0))
     end)
+
+    it("does not cut a multibyte character", function()
+      assert.are.same({ "✓✓", "✓" }, base.split_length("✓✓✓", 2))
+    end)
+
+    it("counts a multibyte character as its display width", function()
+      assert.are.same({ "héllo", " wörl", "d" }, base.split_length("héllo wörld", 5))
+    end)
+
+    it("counts a wide character as two cells", function()
+      assert.are.same({ "日本", "語a" }, base.split_length("日本語a", 4))
+      assert.are.same({ "a", "日", "本" }, base.split_length("a日本", 2))
+    end)
+
+    it("gives a character wider than the width its own piece", function()
+      assert.are.same({ "日", "本", "a" }, base.split_length("日本a", 1))
+    end)
+
+    it("keeps a combining character with its base", function()
+      local accented = "e\204\129"
+      assert.are.same({ "a" .. accented, "b" }, base.split_length("a" .. accented .. "b", 2))
+    end)
+
+    it("handles three and four byte characters at the end of a line", function()
+      assert.are.same({ "a✓", "😀" }, base.split_length("a✓😀", 2))
+    end)
+
+    it("keeps invalid bytes so the pieces join back into the line", function()
+      for _, line in ipairs({ "ab\255cd", "\226\156", "\128\128", "a\226b", "\240\159" }) do
+        assert.equals(line, table.concat(base.split_length(line, 2)))
+      end
+    end)
+
+    it("does not let an invalid byte swallow the text after it", function()
+      assert.are.same({ "\226a", "bc" }, base.split_length("\226abc", 5))
+    end)
+
+    it("never exceeds the width and never loses a byte", function()
+      local line = "plain héllo ✓✓ 日本語 😀 \tend"
+      for width = 2, 12 do
+        local pieces = base.split_length(line, width)
+        assert.equals(line, table.concat(pieces))
+        for _, piece in ipairs(pieces) do
+          assert.is_true(vim.fn.strdisplaywidth(piece) <= width + 7)
+          if not piece:find("\t", 1, true) then
+            assert.is_true(vim.fn.strdisplaywidth(piece) <= width)
+          end
+        end
+      end
+    end)
   end)
 
   describe("custom_wrap()", function()
     it("wraps lines to max_width and trims interior whitespace", function()
       local out = base.custom_wrap({ "aaaaaaaa", "bb" }, 4)
       assert.are.same({ "aaaa", "aaaa", "bb" }, out)
+    end)
+
+    it("returns valid text for multibyte lines", function()
+      local out = base.custom_wrap({ "✓✓✓" }, 4)
+      assert.are.same({ "✓✓✓" }, out)
+      out = base.custom_wrap({ "✓✓✓✓✓" }, 2)
+      assert.are.same({ "✓✓", "✓✓", "✓" }, out)
+    end)
+
+    it("reports segments in bytes for multibyte lines", function()
+      local _, segments = base.custom_wrap({ "✓✓✓" }, 2)
+      assert.are.same({
+        { row = 0, start = 0, finish = 6, col = 0 },
+        { row = 0, start = 6, finish = 9, col = 0 },
+      }, segments)
     end)
 
     it("applies pad_left / pad_right", function()
