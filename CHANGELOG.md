@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.21.2] - 2026-11-05
+
+### Fixed
+- Inline highlights now land on the right text in `compact` and `wrapped-*` notifications with more
+  than one line, or with a message that wraps, instead of being lost or shifted.
+- `wrapped-compact` no longer logs errors and loses highlights when a notification has a title, and
+  no longer shows the word "nil" for an empty message.
+- `minimal` accounts for the duplicate count when placing inline highlights.
+
+### Changed
+- Failed highlight errors in `nvim-notify.log` now include the line, columns and line length.
+
 ## [3.21.1] - 2026-11-05
 
 ### Changed

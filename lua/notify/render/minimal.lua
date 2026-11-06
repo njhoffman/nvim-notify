@@ -3,9 +3,12 @@ local base = require("notify.render.base")
 
 return function(bufnr, notif, highlights)
   local message = notif.message
+  local body_col = 0
   if notif.duplicates then
+    local prefix = string.format("x%d ", #notif.duplicates)
+    body_col = #prefix
     message = {
-      string.format("x%d %s", #notif.duplicates, notif.message[1]),
+      prefix .. notif.message[1],
       unpack(notif.message, 2),
     }
   end
@@ -17,5 +20,5 @@ return function(bufnr, notif, highlights)
     end_col = #message[#message],
     priority = 50,
   })
-  base.highlight_inline(bufnr, highlights, notif, 0, 0)
+  base.highlight_inline(bufnr, highlights, notif, 0, body_col)
 end

@@ -14,7 +14,7 @@ return function(bufnr, notif, highlights, config)
   local max_width = config.max_width and config.max_width() or default_max_width
   max_width = math.max(10, math.min(max_width, terminal_width - 1))
 
-  local message = base.custom_wrap(notif.message, max_width)
+  local message, segments = base.custom_wrap(notif.message, max_width)
 
   local prefix = base.apply_duplicates(string.format(" %s %s", icon, title), notif, "%s x%d")
   table.insert(message, 1, prefix)
@@ -38,5 +38,5 @@ return function(bufnr, notif, highlights, config)
     priority = 10,
   })
   base.highlight_body(bufnr, highlights, notif, 2, 0, #message, 0)
-  base.highlight_inline(bufnr, highlights, notif, 2, 0)
+  base.highlight_inline_wrapped(bufnr, highlights, notif, 2, segments)
 end

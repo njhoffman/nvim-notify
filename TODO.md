@@ -26,10 +26,20 @@ Reviewed: 2026-11-05
 
 ## Bugs
 
-- [ ] **Render errors fill the log.** (p2) [bug] `set_extmark` in `lua/notify/render/base.lua:18` accounts for 1,002 of the
-      1,056 lines in `nvim-notify.log` (April to November 2026): 919 `Invalid 'end_col': out of range` and 83
-      `Invalid 'col': out of range`. The `pcall` hides them from the user, so the affected highlights are silently lost.
-      Find which render passes columns past the end of the line; the log does not say.
+- [x] **Render errors fill the log.** (p2) [bug] Three causes, all reproduced and fixed: `wrapped-compact` wrote past its title
+      row, `highlight_inline` added the first row's prefix width to every row, and wrapped renderers used ranges measured
+      against the unwrapped message. Inline highlights now land on the right text, split across wrapped lines where needed,
+      and the log line records the position and line length. Which cause produced how many of the logged 1,002 is not
+      known, so watch `nvim-notify.log` for any that remain.
+- [ ] **Wrapping cuts multibyte characters in half.** (p2) [bug] Confirmed: `split_length`
+      (`lua/notify/render/base.lua`) slices by bytes, so `custom_wrap({ "✓✓✓" }, 4)` returns broken UTF-8 (`✓�`). Long
+      notifications with icons or accents show garbage. It also measures bytes rather than display width. Split on
+      character boundaries, and keep the `segments` returned by `custom_wrap` in bytes.
+- [ ] **Tests and scripts write to the real log.** (p3) [test] `tests/init.vim` does not redirect the log, so test runs and any
+      headless script append to `~/.local/state/nvim/logs/nvim-notify.log` next to real errors. Set `XDG_STATE_HOME` in
+      `scripts/test`.
+- [ ] **`render/default.lua` fails the style check.** (p3) [chore] `stylua --check` reports the `math.max` call at line 37, which
+      the CI style job would reject. Run `./scripts/style`.
 - [ ] **`setup({ timeout = false })` stops the render loop.** (p2) [bug] Confirmed by running it: the `x == nil and false or x`
       in `_start_timer` (`lua/notify/windows/init.lua:178`) yields nil, so `timer:start(nil)` errors and the notification
       never closes. `on_refresh` (`:172`) has the same problem with `set_repeat(false)`. Passing `timeout = false` per

@@ -4,9 +4,10 @@ local base = require("notify.render.base")
 
 return function(bufnr, notif, highlights, config)
   local max_width = config.max_width() or 80
-  local message = base.custom_wrap(notif.message, max_width, { pad_right = "  " })
+  local message, segments = base.custom_wrap(notif.message, max_width, { pad_right = "  " })
   if #message > 0 then
     message[1] = " " .. message[1]
+    segments[1].col = segments[1].col + 1
   end
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, message)
 
@@ -22,5 +23,5 @@ return function(bufnr, notif, highlights, config)
       priority = 50,
     })
   end
-  base.highlight_inline(bufnr, highlights, notif, 0, 0)
+  base.highlight_inline_wrapped(bufnr, highlights, notif, 0, segments)
 end

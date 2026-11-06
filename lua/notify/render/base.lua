@@ -17,7 +17,18 @@ end
 function M.set_extmark(bufnr, line, col, opts)
   local ok, err = pcall(vim.api.nvim_buf_set_extmark, bufnr, namespace, line, col, opts)
   if not ok then
-    log.error("notify render: failed to set extmark", err)
+    local got_text, text = pcall(vim.api.nvim_buf_get_lines, bufnr, line, line + 1, false)
+    local length = got_text and text[1] and #text[1] or "none"
+    log.error(
+      string.format(
+        "notify render: failed to set extmark at line %d, col %d, end_col %s, line length %s:",
+        line,
+        col,
+        tostring(opts.end_col),
+        length
+      ),
+      err
+    )
   end
   return ok
 end
@@ -51,6 +62,9 @@ end
 --- line, cols are byte columns). The group name is resolved via
 --- `buf_highlights.content`, which is pre-populated by the buffer highlights
 --- module so the inline group participates in opacity animations.
+---
+--- `start_col` only shifts the first body row: a prefix such as an icon sits on that row alone.
+--- For a body that was wrapped, use `highlight_inline_wrapped`.
 ---@param bufnr integer
 ---@param buf_highlights table
 ---@param notif table
@@ -63,12 +77,41 @@ function M.highlight_inline(bufnr, buf_highlights, notif, start_line, start_col)
   end
   local content = buf_highlights.content or {}
   for _, hl in ipairs(inline) do
-    local hl_group = content[hl[1]] or hl[1]
-    M.set_extmark(bufnr, start_line + hl[2], start_col + hl[3], {
-      hl_group = hl_group,
-      end_col = start_col + hl[4],
+    local offset = hl[2] == 0 and start_col or 0
+    M.set_extmark(bufnr, start_line + hl[2], offset + hl[3], {
+      hl_group = content[hl[1]] or hl[1],
+      end_col = offset + hl[4],
       priority = 60,
     })
+  end
+end
+
+--- Apply `notif.highlights.inline` to a body wrapped by `custom_wrap`. The ranges describe the
+--- original message, so each one is placed on every wrapped line it overlaps.
+---@param bufnr integer
+---@param buf_highlights table
+---@param notif table
+---@param start_line integer row where the wrapped body begins in the buffer
+---@param segments table[] second return value of `custom_wrap`
+function M.highlight_inline_wrapped(bufnr, buf_highlights, notif, start_line, segments)
+  local inline = vim.tbl_get(notif, "highlights", "inline")
+  if not inline then
+    return
+  end
+  local content = buf_highlights.content or {}
+  for _, hl in ipairs(inline) do
+    for index, segment in ipairs(segments) do
+      local first = math.max(hl[3], segment.start)
+      local last = math.min(hl[4], segment.finish)
+      if segment.row == hl[2] and first < last then
+        local shift = segment.col - segment.start
+        M.set_extmark(bufnr, start_line + index - 1, first + shift, {
+          hl_group = content[hl[1]] or hl[1],
+          end_col = last + shift,
+          priority = 60,
+        })
+      end
+    end
   end
 end
 
@@ -104,20 +147,33 @@ end
 ---@param lines string[]
 ---@param max_width integer
 ---@param opts table? `{ pad_left = string?, pad_right = string? }`
----@return string[]
+---@return string[] wrapped
+---@return table[] segments For each wrapped line, where its text came from: `row` and the byte range
+--- `start` to `finish` in the original lines, and `col`, the byte column it begins at in the wrapped
+--- line. A renderer that prepends text to a wrapped line must add that length to `col`.
 function M.custom_wrap(lines, max_width, opts)
   opts = opts or {}
   local pad_left = opts.pad_left or ""
   local pad_right = opts.pad_right or ""
   local inner_width = math.max(1, max_width - #pad_right)
   local wrapped = {}
-  for _, line in ipairs(lines) do
+  local segments = {}
+  for row, line in ipairs(lines) do
+    local offset = 0
     for _, piece in ipairs(M.split_length(line, inner_width)) do
-      piece = piece:gsub("^%s+", ""):gsub("%s+$", "")
-      wrapped[#wrapped + 1] = pad_left .. piece .. pad_right
+      local leading = #piece:match("^%s*")
+      local text = piece:sub(leading + 1):gsub("%s+$", "")
+      wrapped[#wrapped + 1] = pad_left .. text .. pad_right
+      segments[#segments + 1] = {
+        row = row - 1,
+        start = offset + leading,
+        finish = offset + leading + #text,
+        col = #pad_left,
+      }
+      offset = offset + #piece
     end
   end
-  return wrapped
+  return wrapped, segments
 end
 
 --- Return whether the message would overflow `config.max_width` and needs
