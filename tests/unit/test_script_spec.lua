@@ -27,6 +27,8 @@ describe("scripts/test", function()
     write(dir .. "/bin/nvim", {
       "#!/bin/bash",
       'ls -A > "$FAKE_LISTING"',
+      'echo "$XDG_STATE_HOME" > "$FAKE_LISTING.state"',
+      'touch "$XDG_STATE_HOME/nvim-notify.log"',
       'cat "$FAKE_OUTPUT"',
       'exit "${FAKE_STATUS:-0}"',
     })
@@ -36,6 +38,7 @@ describe("scripts/test", function()
   after_each(function()
     vim.fn.delete(dir, "rf")
     vim.fn.delete(dir .. ".listing")
+    vim.fn.delete(dir .. ".listing.state")
   end)
 
   --- Run the script in the temp project. Returns its exit status and output.
@@ -49,6 +52,8 @@ describe("scripts/test", function()
       "_",
       dir,
       "env",
+      "-u",
+      "XDG_STATE_HOME",
       "PATH=" .. dir .. "/bin:" .. vim.env.PATH,
       "FAKE_OUTPUT=" .. dir .. "/output",
       "FAKE_STATUS=" .. (opts.status or 0),
@@ -163,6 +168,12 @@ describe("scripts/test", function()
     local entries = vim.fn.readfile(dir .. ".listing")
     table.sort(entries)
     assert.same({ "bin", "output", "tests", "tmp" }, entries)
+  end)
+
+  it("sends the log to a temporary state directory", function()
+    run(two_clean())
+    local state = vim.fn.readfile(dir .. ".listing.state")[1]
+    assert.is_truthy(vim.startswith(state, dir .. "/tmp/"))
   end)
 
   it("removes its temporary file", function()

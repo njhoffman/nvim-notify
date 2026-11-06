@@ -34,7 +34,10 @@ return function(bufnr, notif, highlights, config)
       {
         string.rep(
           "━",
-          math.max(vim.str_utfindex(left_buffer, "utf-32") + title_accum + 2, config.minimum_width())
+          math.max(
+            vim.str_utfindex(left_buffer, "utf-32") + title_accum + 2,
+            config.minimum_width()
+          )
         ),
         highlights.border,
       },

@@ -1,5 +1,5 @@
 
-ARG NEOVIM_RELEASE=${NEOVIM_RELEASE:-https://github.com/neovim/neovim/releases/download/nightly/nvim-linux64.tar.gz}
+ARG NEOVIM_RELEASE=${NEOVIM_RELEASE:-https://github.com/neovim/neovim/releases/download/nightly/nvim-linux-x86_64.tar.gz}
 FROM ubuntu
 ARG NEOVIM_RELEASE
 

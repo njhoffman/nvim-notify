@@ -245,17 +245,6 @@ function Config.setup(custom_config)
   local needs_opacity =
     vim.tbl_contains({ BUILTIN_STAGES.FADE_IN_SLIDE_OUT, BUILTIN_STAGES.FADE }, stages)
 
-  if needs_opacity and not vim.opt.termguicolors:get() and vim.fn.has("nvim-0.10") == 0 then
-    user_config.stages = BUILTIN_STAGES.STATIC
-    vim.schedule(function()
-      vim.notify(
-        "Opacity changes require termguicolors to be set.\nChange to different animation stages or set termguicolors to disable this warning",
-        "warn",
-        { title = "nvim-notify" }
-      )
-    end)
-  end
-
   user_config.background_colour = validate_highlight(user_config.background_colour, needs_opacity)
 
   return config

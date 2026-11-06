@@ -266,20 +266,12 @@ describe("render loop", function()
 
   a.it("closes a timed notification without waiting for the settled interval", function()
     setup({ timeout = 600 })
-    local start
-    local closed_at
-    local notif = notify.async("timed", "info", {
-      on_close = function()
-        closed_at = vim.uv.now()
-      end,
-    })
+    local notif = notify.async("timed")
     notif.events.open()
-    start = vim.uv.now()
+    local start = vim.uv.now()
     notif.events.close()
-    a.util.scheduler()
     vim.uv.update_time()
-    closed_at = closed_at or vim.uv.now()
-    assert.is_true(closed_at - start < 600 + REACTION_MS)
+    assert.is_true(vim.uv.now() - start < 600 + REACTION_MS)
   end)
 
   a.it("keeps a notification open and rearms its timer when keep is true", function()
@@ -374,6 +366,260 @@ describe("render loop", function()
     end
     settle()
     assert.is_true(renders_during(QUIET_MS) <= MAX_QUIET_RENDERS)
+  end)
+end)
+
+describe("notification timeouts", function()
+  local notify = require("notify")
+  local real_print = _G.print
+  local printed
+
+  local function setup(extra)
+    notify.setup(vim.tbl_extend("force", {
+      background_colour = "#000000",
+      stages = "static",
+      fps = 30,
+    }, extra or {}))
+  end
+
+  before_each(function()
+    printed = {}
+    _G.print = function(...)
+      table.insert(printed, table.concat(vim.tbl_map(tostring, { ... }), " "))
+    end
+  end)
+
+  after_each(function()
+    _G.print = real_print
+    notify.dismiss({ pending = true, silent = true })
+  end)
+
+  a.it("keeps a notification open when the configured timeout is false", function()
+    setup({ timeout = false })
+    local win = notify.async("forever").events.open()
+    a.util.sleep(200)
+    a.util.scheduler()
+    assert.same({}, printed)
+    assert.is.True(vim.api.nvim_win_is_valid(win))
+  end)
+
+  a.it("replaces a notification when the configured timeout is false", function()
+    setup({ timeout = false })
+    local record = notify.async("before")
+    local win = record.events.open()
+    a.util.sleep(100)
+    notify.notify("after", "info", { replace = record })
+    a.util.sleep(100)
+    a.util.scheduler()
+    assert.same({}, printed)
+    assert.is.True(vim.api.nvim_win_is_valid(win))
+  end)
+
+  a.it("uses a notification's own timeout over a false default", function()
+    setup({ timeout = false })
+    local closed = false
+    notify.notify("short", "info", {
+      timeout = 100,
+      on_close = function()
+        closed = true
+      end,
+    })
+    a.util.sleep(400)
+    assert.is.True(closed)
+  end)
+
+  a.it("treats timeout = true as the configured default", function()
+    setup({ timeout = 100 })
+    local closed = false
+    notify.notify("default", "info", {
+      timeout = true,
+      on_close = function()
+        closed = true
+      end,
+    })
+    a.util.sleep(400)
+    assert.same({}, printed)
+    assert.is.True(closed)
+  end)
+
+  a.it("stays open when timeout = true and the configured default is false", function()
+    setup({ timeout = false })
+    local win = notify.async("forever", "info", { timeout = true }).events.open()
+    a.util.sleep(200)
+    a.util.scheduler()
+    assert.same({}, printed)
+    assert.is.True(vim.api.nvim_win_is_valid(win))
+  end)
+
+  a.it("stays open when the configured timeout is true", function()
+    setup({ timeout = true })
+    local win = notify.async("forever").events.open()
+    a.util.sleep(200)
+    a.util.scheduler()
+    assert.same({}, printed)
+    assert.is.True(vim.api.nvim_win_is_valid(win))
+  end)
+
+  a.it("cancels the timer when replaced with timeout = false", function()
+    setup({ timeout = 300 })
+    local record = notify.async("timed")
+    local win = record.events.open()
+    a.util.sleep(50)
+    notify.notify("forever", "info", { replace = record, timeout = false })
+    a.util.sleep(500)
+    a.util.scheduler()
+    assert.same({}, printed)
+    assert.is.True(vim.api.nvim_win_is_valid(win))
+  end)
+
+  describe("timer handles", function()
+    local real_new_timer = vim.uv.new_timer
+    local timers
+
+    before_each(function()
+      timers = {}
+      vim.uv.new_timer = function()
+        local timer = real_new_timer()
+        table.insert(timers, timer)
+        return timer
+      end
+    end)
+
+    after_each(function()
+      vim.uv.new_timer = real_new_timer
+    end)
+
+    a.it("ignores a callback already queued when its timer was cancelled", function()
+      local TIMEOUT = 1000000
+      local callback
+      -- Forwards to a real timer, because vim.defer_fn and plenary's sleep use new_timer as well.
+      vim.uv.new_timer = function()
+        local timer = real_new_timer()
+        return setmetatable({}, {
+          __index = function(_, method)
+            return function(_, first, second, fn)
+              if method == "start" and first == TIMEOUT then
+                callback = fn
+              end
+              return timer[method](timer, first, second, fn)
+            end
+          end,
+        })
+      end
+      setup({ timeout = TIMEOUT })
+      local record = notify.async("timed")
+      local win = record.events.open()
+      a.util.sleep(50)
+      assert.is_not_nil(callback)
+      notify.notify("forever", "info", { replace = record, timeout = false })
+      callback()
+      a.util.sleep(100)
+      a.util.scheduler()
+      assert.same({}, printed)
+      assert.is.True(vim.api.nvim_win_is_valid(win))
+    end)
+
+    a.it("closes the timer when it fires", function()
+      setup({ timeout = 100 })
+      local notif = notify.async("timed")
+      notif.events.open()
+      notif.events.close()
+      local window_timers = 0
+      for _, timer in ipairs(timers) do
+        if timer:is_closing() then
+          window_timers = window_timers + 1
+        end
+      end
+      assert.is_true(window_timers >= 1)
+    end)
+
+    a.it("closes the timer of a dismissed notification", function()
+      setup({ timeout = 1000000 })
+      local closed = false
+      notify.notify("held", "info", {
+        on_close = function()
+          closed = true
+        end,
+      })
+      a.util.sleep(100)
+      local started = vim.deepcopy(#timers)
+      assert.is_true(started >= 1)
+      notify.dismiss({ pending = true, silent = true })
+      a.util.sleep(100)
+      a.util.scheduler()
+      assert.is.True(closed)
+      for _, timer in ipairs(timers) do
+        if timer:get_due_in() > 100000 then
+          assert.is.True(timer:is_closing())
+        end
+      end
+    end)
+  end)
+end)
+
+describe("stages returning nil", function()
+  local notify = require("notify")
+  local real_print = _G.print
+
+  after_each(function()
+    _G.print = real_print
+    notify.dismiss({ pending = true, silent = true })
+  end)
+
+  a.it("removes the window and keeps the loop running", function()
+    local printed = {}
+    _G.print = function(...)
+      table.insert(printed, tostring((...)))
+    end
+    local stages = hold_stages()
+    stages[2] = function()
+      return nil
+    end
+    notify.setup({ background_colour = "#000000", stages = stages, timeout = 1000000 })
+    local closed = false
+    local win
+    notify.notify("gone", "info", {
+      on_open = function(opened)
+        win = opened
+      end,
+      on_close = function()
+        closed = true
+      end,
+    })
+    a.util.sleep(100)
+    a.util.scheduler()
+    assert.same({}, printed)
+    assert.is.False(vim.api.nvim_win_is_valid(win))
+    assert.is.True(closed)
+  end)
+
+  a.it("removes a window whose later stage is nil without animating", function()
+    local printed = {}
+    _G.print = function(...)
+      table.insert(printed, tostring((...)))
+    end
+    local stages = hold_stages()
+    stages[2] = function()
+      return {}
+    end
+    stages[3] = function()
+      return nil
+    end
+    stages[4] = function()
+      return {}
+    end
+    notify.setup({ background_colour = "#000000", stages = stages, timeout = 1000000 })
+    local closed = false
+    notify.notify("gone", "info", {
+      animate = false,
+      on_close = function()
+        closed = true
+      end,
+    })
+    a.util.sleep(100)
+    a.util.scheduler()
+    assert.same({}, printed)
+    assert.is.True(closed)
   end)
 end)
 

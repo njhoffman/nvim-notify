@@ -203,7 +203,7 @@ describe("wrapped-compact", function()
   it("renders an empty message without inventing text", function()
     local _, logged, lines = run("wrapped-compact", { message = { "" } }, "Body")
     assert.same({}, logged)
-    assert.equals(" I ", lines[1])
+    assert.equals("I", vim.trim(lines[1]))
   end)
 end)
 

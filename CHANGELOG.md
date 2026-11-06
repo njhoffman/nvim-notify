@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.21.6] - 2026-11-05
+
+### Changed
+- Neovim 0.11 is now the stated minimum. Earlier versions had already stopped working as of 3.21.1.
+- `scripts/test` sends logs to a temporary directory instead of the real `nvim-notify.log`.
+
+### Fixed
+- `setup({ timeout = false })` and `timeout = true` no longer stop the render loop.
+- Replacing a notification with `timeout = false` now cancels its timeout.
+- A custom stage that returns nil removes its window instead of stopping every notification.
+- Custom stages with `damping` above 1 now animate correctly.
+- `top_down = false` no longer places a notification above the top of a full screen.
+- Blank lines in wrapped messages are kept.
+- Window timers are closed instead of staying open after each timed notification.
+- CI and the docs `Dockerfile` download Neovim using its current release asset name.
+
 ## [3.21.5] - 2026-11-05
 
 ### Fixed
@@ -52,6 +68,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Faded text now returns to its exact colour at full opacity instead of stopping one step short.
+- Replaced Neovim APIs deprecated in recent releases. `vim.str_utfindex` now passes an explicit
+  encoding, which requires Neovim 0.11.
+
+## [3.21.0] - 2026-04-27
+
+### Added
+- `inline` renderer, with the icon and title inside the top border row.
+- `borderless` renderer, with no border row and the title on the first message line.
+
+## [3.20.0] - 2026-04-18
+
+### Added
+- `error` renderer, chosen automatically for error messages by the built-in rulesets.
+
+### Changed
+- The `error` matcher replaces `errorpath`, and handles error codes, stack tracebacks and nested wrappers.
+
+## [3.19.1] - 2026-04-18
+
+### Added
+- `columns` decorator rows accept `{ text, hl_group }` cells, which override the column's highlight.
+
+## [3.19.0] - 2026-04-18
+
+### Added
+- `columns` decorator for aligned rows with per-column highlights.
+- `errorpath` matcher, which captures the file, line and column from an error message.
+
+## [3.18.0] - 2026-04-18
+
+### Added
+- Parser registry with decorators and matchers, and `opts.parser = false` to bypass it.
+- `render = "auto"`, which picks a renderer from named rulesets (`register_ruleset`, `add_rule`).
+- `:NotificationsDemo` and `:NotificationsDemoStop` for trying options interactively.
+- `debuglog` option for choosing the logger.
+
+### Fixed
+- Tables with embedded highlights passed to `vim.notify` now show those highlights.
+
+## [3.17.1] - 2026-03-27
+
+### Fixed
+- Per-notification highlight groups are cleared when a notification closes.
+
+## [3.17.0] - 2026-03-27
+
+### Fixed
+- `strwidth` used the wrong function, and `parse_highlights` received mismatched arguments.
+- Typo in the parser config, a duplicate `SLIDE` stage key, and a missing `_.isObject`.
 
 ## [3.16.0] - 2025-11-07
 

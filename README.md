@@ -21,7 +21,7 @@ Credit to [sunjon](https://github.com/sunjon) for [the design](https://neovim.di
 
 ### Prerequisites
 
-- **Neovim 0.9.0+** (tested against 0.9.5, 0.10.2, and nightly)
+- **Neovim 0.11.0+** (tested against 0.11.0 and nightly)
 - Make sure to use a font which supports glyphs (icons), fonts can be found [here](https://github.com/ryanoasis/nerd-fonts)
 - 24-bit colour is required, which can be enabled by adding this to your init.lua:
 

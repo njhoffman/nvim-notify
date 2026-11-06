@@ -20,8 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         nvim_version:
-          - v0.9.5
-          - v0.10.2
+          - v0.11.0
           - nightly
     steps:
       - uses: actions/checkout@v4
@@ -37,9 +36,9 @@ jobs:
           test -d _neovim || {
             mkdir -p _neovim
             if [ "${{ matrix.nvim_version }}" = "nightly" ]; then
-              curl -sL https://github.com/neovim/neovim/releases/download/nightly/nvim-linux64.tar.gz | tar xzf - --strip-components=1 -C "${PWD}/_neovim"
+              curl -sL https://github.com/neovim/neovim/releases/download/nightly/nvim-linux-x86_64.tar.gz | tar xzf - --strip-components=1 -C "${PWD}/_neovim"
             else
-              curl -sL https://github.com/neovim/neovim/releases/download/${{ matrix.nvim_version }}/nvim-linux64.tar.gz | tar xzf - --strip-components=1 -C "${PWD}/_neovim"
+              curl -sL https://github.com/neovim/neovim/releases/download/${{ matrix.nvim_version }}/nvim-linux-x86_64.tar.gz | tar xzf - --strip-components=1 -C "${PWD}/_neovim"
             fi
           }
           mkdir -p ~/.local/share/nvim/site/pack/vendor/start

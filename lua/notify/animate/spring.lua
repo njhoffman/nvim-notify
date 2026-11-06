@@ -49,7 +49,7 @@ return function(dt, goal, state, frequency, damping)
     local e2 = co2 * exp(r2 * dt)
 
     new_pos = e1 + e2 + goal
-    new_pos = r1 * e1 + r2 * e2
+    new_vel = r1 * e1 + r2 * e2
   end
   state.position = new_pos
   state.velocity = new_vel

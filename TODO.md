@@ -41,52 +41,48 @@ Reviewed: 2026-11-05
 - [ ] **Long titles are clipped.** (p3) [bug] A title wider than `max_width` is cut off at the window edge in `wrapped-compact` and
       `wrapped-default` (measured: 13 and 14 letters of a 40-letter title at width 30), and `max_line_width` does not count it.
       Decide whether to truncate with an ellipsis or wrap the title.
-- [ ] **`custom_wrap` drops blank lines.** (p3) [bug] Confirmed: `custom_wrap({ "a", "", "b" }, 10)` returns `{ "a", "b" }`, because
-      `split_length` returns nothing for an empty line, so wrapped messages lose their paragraph breaks.
+- [x] **`custom_wrap` drops blank lines.** (p3) [bug] Blank lines now survive wrapping, so wrapped messages keep their paragraph
+      breaks.
 - [x] **A test run can lose output and still pass.** (p3) [test] `scripts/test` now requires one summary for each spec file, so
       a run that loses a summary fails instead of passing. The cause is still not confirmed; one full run in 16 lost
       output, so an occasional failure reading "N of M spec files reported a summary" is this, and a rerun is the check.
-- [ ] **Tests and scripts write to the real log.** (p3) [test] `tests/init.vim` does not redirect the log, so test runs and any
-      headless script append to `~/.local/state/nvim/logs/nvim-notify.log` next to real errors. Set `XDG_STATE_HOME` in
-      `scripts/test`.
-- [ ] **`render/default.lua` fails the style check.** (p3) [chore] `stylua --check` reports the `math.max` call at line 37, which
-      the CI style job would reject. Run `./scripts/style`.
-- [ ] **`setup({ timeout = false })` stops the render loop.** (p2) [bug] Confirmed by running it: the `x == nil and false or x`
-      in `_start_timer` (`lua/notify/windows/init.lua:178`) yields nil, so `timer:start(nil)` errors and the notification
-      never closes. `on_refresh` (`:172`) has the same problem with `set_repeat(false)`. Passing `timeout = false` per
-      notification works. Test the default for nil explicitly instead of using `and`/`or`.
+- [x] **Tests and scripts write to the real log.** (p3) [test] `scripts/test` now uses a temporary `XDG_STATE_HOME`.
+- [x] **`render/default.lua` fails the style check.** (p3) [chore] Formatted; `stylua --check lua tests` passes.
+- [x] **`setup({ timeout = false })` stops the render loop.** (p2) [bug] `_start_timer` and `on_refresh` now share one timeout lookup: a
+      notification's own number wins, `true` or nil means the configured default, and anything else stays until dismissed.
+      Replacing a notification with `timeout = false` also cancels its running timer.
 - [x] **`scripts/test` can pass when tests fail.** (p2) [bug] Reproduced with real specs: 1 failure exited 1, 10 failures exited
       0, and CI's `release` job depends on this result. The script now compares counts numerically and respects nvim's
       exit status, which it used to discard.
-- [ ] **Stage returning nil crashes the window update.** (p3) [bug] `_update_window` (`lua/notify/windows/init.lua:208`) removes
-      the window when goals are nil but carries on and indexes them, and the error stops the loop for every notification.
-      Found by reading the code. Return right after `_remove_win`.
-- [ ] **Overdamped spring returns the wrong position.** (p3) [bug] `lua/notify/animate/spring.lua:52` assigns `new_pos` twice;
-      the second should be `new_vel`, which stays nil. Only reachable from custom stages with `damping > 1`, as built-in
-      stages use 1 or less. Found by reading the code.
-- [ ] **`available_slot` tests a function instead of the direction.** (p3) [bug] `is_increasing and interval.max`
-      (`lua/notify/stages/util.lua:138`) is always truthy, so bottom-up stacking compares the wrong edge. It should use the
-      local `increasing`. Found by reading the code; the visible effect has not been checked.
-- [ ] **Window timers are stopped but never closed.** (p3) [bug] `_start_timer` (`lua/notify/windows/init.lua:190`) calls
-      `timer:stop()` without `timer:close()`, leaving a libuv handle open for each timed notification,
-      and `_remove_win` leaves the timer of a dismissed window running. Found by reading the code.
-
-## Docs
-
-- [ ] **Document `animate = false` for routine messages.** (p3) [docs] The config now shows its startup time with
-      `animate = false`, which skips the slide-in and costs far fewer redraws than the default. The option is only described as
-      being for long-running notifications in `lua/notify/init.lua:45`.
-- [ ] **The stated Neovim support is out of date.** (p2) [docs] README and CI claim 0.9.5 and 0.10.2, but the code calls
-      `nvim__redraw` (0.10+) and the two-argument `vim.str_utfindex(s, "utf-32")` (0.11+). Pick a minimum, then update
-      `README.md`, `CLAUDE.md` and the matrix in `.github/workflows/workflow.yaml`. Not run on those versions; found by
-      reading the code.
-- [ ] **CHANGELOG has a gap from 3.17 to 3.21.** (p3) [docs] Its newest released section was 3.16.0 while `package.json` was at
-      3.21.0, and tag `v3.21.0` does not exist. Backfill from the tags and commit messages.
+- [x] **Stage returning nil crashes the window update.** (p3) [bug] `_update_window` now removes the window and returns, including when
+      the nil comes from a later stage of an `animate = false` notification.
+- [x] **Overdamped spring returns the wrong position.** (p3) [bug] `lua/notify/animate/spring.lua` now sets `new_vel`.
+- [x] **`available_slot` tests a function instead of the direction.** (p3) [bug] Now uses `increasing`, so bottom-up stacking checks the window's top
+      edge and no longer places windows above the screen.
+- [x] **Window timers are stopped but never closed.** (p3) [bug] Timers are now closed when they fire, and when their window is removed.
+      A callback already queued for a stopped timer is ignored.
 
 ## Cleanup
+
+- [ ] **`notify.async` discards the caller's callbacks.** (p3) [bug] `instance.async` (`lua/notify/instance.lua:187`) overwrites
+      `opts.on_open` and `opts.on_close` with its own channels, so callbacks passed to it never run. Call both.
+- [ ] **The docgen workflow cannot run.** (p3) [chore] `.github/workflows/docgen.yaml` uses `ubuntu-20.04` and Neovim 0.5.1, far
+      below the 0.11 minimum, and `actions/*@v2`. `doc/nvim-notify.txt` was edited by hand in this change as a result.
+      Found by reading the workflow; its CI status has not been checked.
 
 - [ ] **Treesitter override depends on private fields.** (p3) [refactor] `_redefine_treesitter` reads `query.hl_cache` and
       `query._query` (`lua/notify/service/buffer/highlights.lua:139`), which Neovim can change without notice, and nothing
       guards the call. It works on 0.13-dev today.
 - [ ] **`border_padding` assumes a border on both sides.** (p3) [refactor] `lua/notify/stages/util.lua:55` always returns 2 for
       any border, as its own TODO comment notes, so a border list with missing sides stacks with the wrong spacing.
+
+## Completed
+
+### Docs (completed 2026-11-05)
+
+- [x] **Document `animate = false` for routine messages.** (p3) [docs] Described in `lua/notify/init.lua` and `doc/nvim-notify.txt`.
+- [x] **The stated Neovim support is out of date.** (p2) [docs] Minimum is now 0.11, in `README.md`, `CLAUDE.md` and the CI matrix. Measured with
+      real builds: 0.11.0 passes the whole suite, while 0.10.2 fails 38 tests on `vim.str_utfindex`. CI's download
+      URL also 404s for 0.11 and nightly, because the asset is now `nvim-linux-x86_64.tar.gz`; fixed there and in `Dockerfile`.
+      Removed the code that only ran on older versions.
+- [x] **CHANGELOG has a gap from 3.17 to 3.21.** (p3) [docs] Backfilled from tags and commit messages, and added tag `v3.21.0`.

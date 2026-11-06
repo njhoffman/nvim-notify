@@ -267,9 +267,19 @@ describe("notify.render.base", function()
       assert.are.same({ "ab", "cdef", "ghij", "kl" }, out)
     end)
 
-    it("applies the reserve to the next line when the first is empty", function()
+    it("keeps blank lines", function()
+      assert.are.same({ "a", "", "b" }, base.custom_wrap({ "a", "", "b" }, 10))
+    end)
+
+    it("pads blank lines and reports an empty segment for them", function()
+      local out, segments = base.custom_wrap({ "" }, 10, { pad_left = ">", pad_right = "<" })
+      assert.are.same({ "><" }, out)
+      assert.are.same({ { row = 0, start = 0, finish = 0, col = 1 } }, segments)
+    end)
+
+    it("spends the reserve on a blank first line", function()
       local out = base.custom_wrap({ "", "abcdef" }, 4, { first_line_reserve = 2 })
-      assert.are.same({ "ab", "cdef" }, out)
+      assert.are.same({ "", "abcd", "ef" }, out)
     end)
 
     it("keeps one cell when the reserve is larger than the width", function()

@@ -135,7 +135,7 @@ function M.available_slot(existing_wins, required_space, direction)
     end
   end
 
-  if #intervals > 0 and not cmp(is_increasing and interval.max or interval.min, last_slot) then
+  if #intervals > 0 and not cmp(increasing and interval.max or interval.min, last_slot) then
     return nil
   end
 

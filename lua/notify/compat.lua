@@ -1,20 +1,8 @@
--- Compatibility shim for cross-version Neovim API support (0.9.5+)
+-- Single place to change if these Neovim APIs move. Requires Neovim 0.11+.
 local M = {}
 
--- vim.islist: added in 0.10, replaces vim.tbl_islist
 M.islist = vim.islist
-
--- vim.isarray: added in 0.10, replaces vim.tbl_islist
 M.isarray = vim.isarray
-
--- vim.validate: 3-argument form (name, value, type) is 0.11+ only.
--- Translate to old form {[name] = {value, type}} on older versions.
-if vim.fn.has("nvim-0.11") == 1 then
-  M.validate = vim.validate
-else
-  M.validate = function(name, value, expected_type)
-    vim.validate({ [name] = { value, expected_type } })
-  end
-end
+M.validate = vim.validate
 
 return M

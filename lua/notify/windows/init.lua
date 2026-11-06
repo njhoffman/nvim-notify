@@ -157,6 +157,7 @@ function WindowAnimator:_remove_win(win)
   self.win_states[win] = nil
   self._dirty[win] = nil
   self._needs_flush = true
+  self:_stop_timer(win)
   local notif_buf = self.notif_bufs[win]
   self.notif_bufs[win] = nil
   notif_buf:close(win)
@@ -168,35 +169,63 @@ function WindowAnimator:on_refresh(win)
     return
   end
   self._dirty[win] = true
-  if self.timers[win] then
-    self.timers[win]:set_repeat(notif_buf:timeout() or self.config.default_timeout())
-    self.timers[win]:again()
+  local timer = self.timers[win]
+  if timer then
+    local timeout = self:_timeout_ms(notif_buf)
+    if timeout then
+      timer:set_repeat(timeout)
+      timer:again()
+    else
+      self:_stop_timer(win)
+    end
+  end
+end
+
+--- A notification's own timeout wins. `true` or no value means the configured default.
+---@return integer|false timeout Milliseconds, or false if the notification stays until dismissed
+function WindowAnimator:_timeout_ms(notif_buf)
+  local timeout = notif_buf:timeout()
+  if timeout == nil or timeout == true then
+    timeout = self.config.default_timeout()
+  end
+  return type(timeout) == "number" and timeout
+end
+
+function WindowAnimator:_stop_timer(win)
+  local timer = self.timers[win]
+  if not timer then
+    return
+  end
+  self.timers[win] = nil
+  timer:stop()
+  if not timer:is_closing() then
+    timer:close()
   end
 end
 
 function WindowAnimator:_start_timer(win)
-  local buf_time = self.notif_bufs[win]:timeout() == nil and self.config.default_timeout()
-    or self.notif_bufs[win]:timeout()
-  if buf_time ~= false then
-    if buf_time == true then
-      buf_time = nil
-    end
-    local timer = (vim.uv).new_timer()
-    self.timers[win] = timer
-    timer:start(
-      buf_time,
-      buf_time,
-      vim.schedule_wrap(function()
-        timer:stop()
-        self.timers[win] = nil
-        local notif_buf = self.notif_bufs[win]
-        if not (notif_buf and notif_buf:should_stay()) then
-          self:_advance_win_stage(win)
-        end
-        self:_wake()
-      end)
-    )
+  local timeout = self:_timeout_ms(self.notif_bufs[win])
+  if not timeout then
+    return
   end
+  local timer = vim.uv.new_timer()
+  self.timers[win] = timer
+  timer:start(
+    timeout,
+    timeout,
+    vim.schedule_wrap(function()
+      -- The timer may have been stopped while this callback was queued.
+      if self.timers[win] ~= timer then
+        return
+      end
+      self:_stop_timer(win)
+      local notif_buf = self.notif_bufs[win]
+      if not (notif_buf and notif_buf:should_stay()) then
+        self:_advance_win_stage(win)
+      end
+      self:_wake()
+    end)
+  )
 end
 
 ---@return boolean settled Whether the window is waiting in its timed stage with nothing to animate
@@ -205,14 +234,11 @@ function WindowAnimator:_update_window(time, win, open_windows)
   local notif_buf = self.notif_bufs[win]
   local win_goals = self:_get_win_goals(win, stage, open_windows)
 
-  if not win_goals then
-    self:_remove_win(win)
-  end
-
   -- If we don't animate, then we move to all goals instantly.
   -- Can't just jump to the end, because we need to the intermediate changes
   while
-    not notif_buf:should_animate()
+    win_goals
+    and not notif_buf:should_animate()
     and win_goals.time == nil
     and self.win_stages[win] < #self.stages
   do
@@ -225,6 +251,11 @@ function WindowAnimator:_update_window(time, win, open_windows)
     self:_advance_win_stage(win)
     stage = self.win_stages[win]
     win_goals = self:_get_win_goals(win, stage, open_windows)
+  end
+
+  if not win_goals then
+    self:_remove_win(win)
+    return false
   end
 
   if win_goals.time and not self.timers[win] then

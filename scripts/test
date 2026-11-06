@@ -5,7 +5,10 @@
 target="${1:-tests/}"
 
 output=$(mktemp)
-trap 'rm -f "${output}"' EXIT
+# Keep test runs out of the real nvim-notify.log.
+XDG_STATE_HOME=$(mktemp -d)
+export XDG_STATE_HOME
+trap 'rm -rf "${output}" "${XDG_STATE_HOME}"' EXIT
 
 nvim --headless --noplugin -u tests/init.vim -c "PlenaryBustedDirectory ${target} {minimal_init = 'tests/init.vim'}" | tee "${output}"
 nvim_status=${PIPESTATUS[0]}

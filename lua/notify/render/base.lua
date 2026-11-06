@@ -213,7 +213,9 @@ function M.custom_wrap(lines, max_width, opts)
   for row, line in ipairs(lines) do
     local offset = 0
     local line_first_width = #wrapped == 0 and first_width or inner_width
-    for _, piece in ipairs(M.split_length(line, inner_width, line_first_width)) do
+    -- split_length returns nothing for an empty line, which would lose the blank row.
+    local pieces = line == "" and { "" } or M.split_length(line, inner_width, line_first_width)
+    for _, piece in ipairs(pieces) do
       local leading = #piece:match("^%s*")
       local text = piece:sub(leading + 1):gsub("%s+$", "")
       wrapped[#wrapped + 1] = pad_left .. text .. pad_right
